@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent学习地图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
+        
+        /* 技能树容器 */
+        #tree-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
+        #tree-container:active { cursor: grabbing; }
+
+        /* 节点基础样式 */
+        .node {
+            position: absolute;
+            width: 140px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            text-align: center;
+            padding: 8px;
+            border: 2px solid transparent;
+        }
+
+        /* 状态 1: 已完成 Completed (亮绿色) */
+        .completed {
+            background-color: #064e3b;
+            color: #10b981;
+            border-color: #059669;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .completed:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+
+        /* 状态 2: 激活中 Active (发光蓝色) */
+        .active {
+            background-color: #1e3a8a;
+            color: #60a5fa;
+            border-color: #3b82f6;
+            animation: pulse-blue 2s infinite;
+        }
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        }
+
+        /* 状态 3: 锁定 Locked (灰色) */
+        .locked {
+            background-color: #1e293b;
+            color: #64748b;
+            border-color: #334155;
+            cursor: not-allowed;
+        }
+
+        /* SVG 连线样式 */
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .line {
+            fill: none;
+            stroke: #334155;
+            stroke-width: 2;
+            stroke-dasharray: 5;
+            animation: dash 20s linear infinite;
+        }
+        .line-completed { stroke: #059669; stroke-width: 3; stroke-dasharray: none; opacity: 0.6; }
+        
+        @keyframes dash { to { stroke-dashoffset: -1000; } }
+
+        .header-title {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="header-title text-3xl font-black tracking-widest uppercase italic text-sky-400">
+         Agent 学习地图
+    </h1>
+
+    <div id="tree-container">
+        <svg id="svg-layer"></svg>
+        </div>
+
+    <div id="detail-overlay" class="fixed inset-0 hidden z-50">
+        <div id="detail-backdrop" class="absolute inset-0 bg-black/50"></div>
+        <aside id="detail-panel" class="absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-slate-900 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 ease-out">
+            <div class="h-full flex flex-col p-6">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 id="detail-title" class="text-xl font-bold text-sky-300"></h3>
+                        <div class="mt-2">
+                            <span id="detail-status" class="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-200"></span>
+                        </div>
+                    </div>
+                    <button id="close-detail-btn" class="text-slate-400 hover:text-white text-lg leading-none px-2">×</button>
+                </div>
+
+                <div class="mt-6">
+                    <div class="text-sm text-slate-400 mb-2">完成标准</div>
+                    <p id="detail-criteria" class="text-sm leading-relaxed text-slate-200 whitespace-pre-line"></p>
+                </div>
+
+                <div class="mt-6">
+                    <button id="enter-detail-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition font-medium hidden">进入详情页</button>
+                </div>
+
+                <div class="mt-3">
+                    <button id="advice-btn" class="w-full bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg transition font-medium">获取学习建议</button>
+                </div>
+                <div class="mt-3">
+                    <button id="start-eval-btn" class="w-full bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg transition font-medium">开始评估</button>
+                </div>
+
+                <div class="mt-4 flex-1 min-h-0">
+                    <div class="text-sm text-slate-400 mb-2">建议结果</div>
+                    <div id="advice-result" class="h-full overflow-y-auto bg-slate-800/70 border border-slate-700 rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap"></div>
+                    <button id="regen-advice-btn" class="mt-2 text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition hidden">重新生成</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div id="eval-overlay" class="fixed inset-0 hidden z-[60] bg-slate-950">
+        <div class="h-full w-full flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                <h2 id="eval-title" class="text-lg font-bold text-sky-300"></h2>
+                <button id="exit-eval-btn" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition">退出评估</button>
+            </div>
+            <div id="eval-chat" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950"></div>
+            <div class="p-4 border-t border-slate-800 bg-slate-900">
+                <button id="mark-completed-btn" class="w-full mb-3 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition font-medium hidden">标记为已完成</button>
+                <div class="flex gap-3">
+                    <input id="eval-input" type="text" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500" placeholder="输入你的回答，输入“退出”可结束评估">
+                    <button id="send-eval-btn" class="bg-violet-600 hover:bg-violet-500 px-5 py-2 rounded-lg transition font-medium">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 硬编码初始数据
+        const nodes = [
+            // 基础层
+            { id: 'llm', label: 'LLM API 调用', status: 'completed', x: 100, y: 300 },
+            { id: 'chat', label: '多轮对话', status: 'completed', x: 300, y: 300 },
+            { id: 'func', label: 'Function Calling', status: 'completed', x: 500, y: 300 },
+            
+            // 进阶层
+            { id: 'lang', label: 'LangGraph 编排', status: 'completed', x: 700, y: 200 },
+            { id: 'rag', label: 'RAG 检索', status: 'completed', x: 700, y: 400 },
+            
+            // 当前核心节点 (点击跳转)
+            { id: 'agent', label: 'RAG Agent 原型', status: 'active', x: 950, y: 300, link: '/tracker' },
+            
+            // 未来扩展
+            { id: 'graph', label: 'GraphRAG', status: 'locked', x: 1200, y: 150 },
+            { id: 'deploy', label: 'FastAPI 部署', status: 'locked', x: 1200, y: 300 },
+            { id: 'edu', label: '教育 Agent', status: 'locked', x: 1450, y: 220 },
+            { id: 'fin', label: '金融 Agent', status: 'locked', x: 1450, y: 380 }
+        ];
+
+        const edges = [
+            { from: 'llm', to: 'chat' },
+            { from: 'chat', to: 'func' },
+            { from: 'func', to: 'lang' },
+            { from: 'func', to: 'rag' },
+            { from: 'lang', to: 'agent' },
+            { from: 'rag', to: 'agent' },
+            { from: 'agent', to: 'graph' },
+            { from: 'agent', to: 'deploy' },
+            { from: 'deploy', to: 'edu' },
+            { from: 'deploy', to: 'fin' }
+        ];
+
+        const completionCriteria = {
+            llm: '能够稳定调用主流大模型 API，并完成基础参数配置与错误处理。能够输出结构化内容并验证响应可用性。',
+            chat: '可以维护多轮上下文，让对话在连续追问下保持主题一致。对历史消息截断策略有明确实现。',
+            func: '能够让模型按约定 schema 调用工具函数，并正确处理参数校验与异常回退。',
+            lang: '可以使用 LangGraph 设计至少一个带分支或循环的执行流，并能解释每个节点职责。',
+            rag: '能完成检索、重排和生成的基本链路，并通过样例问题验证回答相关性明显提升。',
+            agent: '已打通“学习记录 + 检索 + 问答”的可运行原型。可以根据新增记录给出更贴近用户背景的建议。',
+            graph: '能把实体与关系写入图数据库，并基于图结构完成可解释的关联检索。',
+            deploy: '可以把应用用 FastAPI 封装为稳定接口，并完成基础线上部署与日志监控。',
+            edu: '可以围绕教育场景设计端到端任务链路，并通过真实学习任务验证效果。',
+            fin: '可以围绕金融场景设计安全合规的 Agent 工作流，并在风控约束下完成任务闭环。'
+        };
+        const statusTextMap = {
+            completed: '已完成',
+            active: '进行中',
+            locked: '未解锁'
+        };
+
+        const container = document.getElementById('tree-container');
+        const svg = document.getElementById('svg-layer');
+        const detailOverlay = document.getElementById('detail-overlay');
+        const detailBackdrop = document.getElementById('detail-backdrop');
+        const detailPanel = document.getElementById('detail-panel');
+        const detailTitle = document.getElementById('detail-title');
+        const detailStatus = document.getElementById('detail-status');
+        const detailCriteria = document.getElementById('detail-criteria');
+        const adviceBtn = document.getElementById('advice-btn');
+        const enterDetailBtn = document.getElementById('enter-detail-btn');
+        const startEvalBtn = document.getElementById('start-eval-btn');
+        const regenAdviceBtn = document.getElementById('regen-advice-btn');
+        const adviceResult = document.getElementById('advice-result');
+        const closeDetailBtn = document.getElementById('close-detail-btn');
+        const evalOverlay = document.getElementById('eval-overlay');
+        const evalTitle = document.getElementById('eval-title');
+        const evalChat = document.getElementById('eval-chat');
+        const evalInput = document.getElementById('eval-input');
+        const sendEvalBtn = document.getElementById('send-eval-btn');
+        const exitEvalBtn = document.getElementById('exit-eval-btn');
+        const markCompletedBtn = document.getElementById('mark-completed-btn');
+        let currentNode = null;
+        let evalHistory = [];
+        let evalPassed = false;
+        let adviceLoadToken = 0;
+
+        // 2. 渲染节点
+        function renderNodes() {
+            nodes.forEach(node => {
+                const div = document.createElement('div');
+                div.id = node.id;
+                div.className = `node ${node.status}`;
+                div.style.left = node.x + 'px';
+                div.style.top = node.y + 'px';
+                div.innerText = node.label;
+
+                div.onclick = () => {
+                    openDetailPanel(node);
+                };
+
+                container.appendChild(div);
+            });
+        }
+
+        // 3. 渲染 SVG 连线
+        function renderEdges() {
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+
+                if (fromNode && toNode) {
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    
+                    // 计算起点终点（节点中心）
+                    const x1 = fromNode.x + 140;
+                    const y1 = fromNode.y + 25;
+                    const x2 = toNode.x;
+                    const y2 = toNode.y + 25;
+
+                    // 绘制三次贝塞尔曲线
+                    const cp1x = x1 + (x2 - x1) / 2;
+                    const d = `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp1x} ${y2}, ${x2} ${y2}`;
+                    
+                    path.setAttribute("d", d);
+                    path.setAttribute("class", `line ${fromNode.status === 'completed' && toNode.status !== 'locked' ? 'line-completed' : ''}`);
+                    svg.appendChild(path);
+                }
+            });
+        }
+
+        renderNodes();
+        renderEdges();
+
+        function setStatusBadge(status) {
+            detailStatus.className = 'text-xs px-2 py-1 rounded-full';
+            if (status === 'completed') {
+                detailStatus.classList.add('bg-emerald-700', 'text-emerald-100');
+            } else if (status === 'active') {
+                detailStatus.classList.add('bg-sky-700', 'text-sky-100');
+            } else {
+                detailStatus.classList.add('bg-slate-700', 'text-slate-200');
+            }
+            detailStatus.innerText = statusTextMap[status] || status;
+        }
+
+        function openDetailPanel(node) {
+            currentNode = node;
+            detailTitle.innerText = node.label;
+            setStatusBadge(node.status);
+            detailCriteria.innerText = completionCriteria[node.id] || '该节点暂无完成标准描述。';
+            adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
+            regenAdviceBtn.classList.add('hidden');
+            adviceBtn.disabled = false;
+            adviceBtn.innerText = '获取学习建议';
+            if (node.link) {
+                enterDetailBtn.classList.remove('hidden');
+            } else {
+                enterDetailBtn.classList.add('hidden');
+            }
+            if (node.status === 'locked') {
+                startEvalBtn.classList.add('hidden');
+            } else if (node.status === 'completed') {
+                startEvalBtn.classList.remove('hidden');
+                startEvalBtn.innerText = '复习巩固';
+            } else {
+                startEvalBtn.classList.remove('hidden');
+                startEvalBtn.innerText = '开始评估';
+            }
+            detailOverlay.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                detailPanel.classList.remove('translate-x-full');
+            });
+            const currentToken = ++adviceLoadToken;
+            loadSavedAdviceOnOpen(node, currentToken);
+        }
+
+        function closeDetailPanel() {
+            detailPanel.classList.add('translate-x-full');
+            setTimeout(() => {
+                detailOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        async function generateAndSaveAdvice() {
+            if (!currentNode) return;
+            adviceResult.innerText = '正在生成建议，请稍候...';
+            const query = `我想攻克${currentNode.label}这个节点，根据我的学习记录给我具体建议`;
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query})
+            });
+            const data = await res.json();
+            const advice = data.response || '未返回建议内容，请稍后重试。';
+            adviceResult.innerText = advice;
+            await fetch('/save_advice', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({node_name: currentNode.label, advice})
+            });
+            regenAdviceBtn.classList.remove('hidden');
+        }
+
+        async function getLearningAdvice(forceRegenerate = false) {
+            if (!currentNode) return;
+            adviceBtn.disabled = true;
+            adviceBtn.innerText = '获取中...';
+            try {
+                if (!forceRegenerate) {
+                    const cachedRes = await fetch(`/get_advice?node=${encodeURIComponent(currentNode.label)}`);
+                    const cachedData = await cachedRes.json();
+                    if (cachedData.found && cachedData.advice) {
+                        adviceResult.innerText = cachedData.advice;
+                        regenAdviceBtn.classList.remove('hidden');
+                        return;
+                    }
+                }
+                await generateAndSaveAdvice();
+            } catch (error) {
+                adviceResult.innerText = '请求失败，请检查服务状态后重试。';
+            } finally {
+                adviceBtn.disabled = false;
+                adviceBtn.innerText = '获取学习建议';
+            }
+        }
+
+        async function loadSavedAdviceOnOpen(node, token) {
+            try {
+                const cachedRes = await fetch(`/get_advice?node=${encodeURIComponent(node.label)}`);
+                const cachedData = await cachedRes.json();
+                if (token !== adviceLoadToken || !currentNode || currentNode.id !== node.id) return;
+                if (cachedData.found && cachedData.advice) {
+                    adviceResult.innerText = cachedData.advice;
+                    regenAdviceBtn.classList.remove('hidden');
+                } else {
+                    adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
+                    regenAdviceBtn.classList.add('hidden');
+                }
+            } catch (error) {
+                if (token !== adviceLoadToken) return;
+                adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
+                regenAdviceBtn.classList.add('hidden');
+            }
+        }
+
+        function appendEvalMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = role === 'assistant'
+                ? 'max-w-[80%] mr-auto bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm leading-relaxed'
+                : 'max-w-[80%] ml-auto bg-violet-900/60 border border-violet-700 rounded-lg p-3 text-sm leading-relaxed';
+            div.innerText = text;
+            evalChat.appendChild(div);
+            evalChat.scrollTop = evalChat.scrollHeight;
+        }
+
+        function closeEvalOverlay() {
+            evalOverlay.classList.add('hidden');
+        }
+
+        async function requestEvaluation(userAnswer) {
+            if (!currentNode) return;
+            sendEvalBtn.disabled = true;
+            sendEvalBtn.innerText = '发送中...';
+            try {
+                const res = await fetch('/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        node_name: currentNode.label,
+                        history: evalHistory,
+                        user_answer: userAnswer
+                    })
+                });
+                const data = await res.json();
+                const reply = data.response || '评估服务暂无返回，请稍后重试。';
+                evalHistory.push({ role: 'assistant', content: reply });
+                appendEvalMessage('assistant', reply);
+                evalPassed = !!data.passed;
+                if (evalPassed) {
+                    markCompletedBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                appendEvalMessage('assistant', '评估请求失败，请检查服务状态后重试。');
+            } finally {
+                sendEvalBtn.disabled = false;
+                sendEvalBtn.innerText = '发送';
+            }
+        }
+
+        function openEvalOverlay() {
+            if (!currentNode) return;
+            evalHistory = [];
+            evalPassed = false;
+            evalTitle.innerText = `${currentNode.label} · 评估模式`;
+            evalChat.innerHTML = '';
+            evalInput.value = '';
+            markCompletedBtn.classList.add('hidden');
+            evalOverlay.classList.remove('hidden');
+            requestEvaluation('');
+            setTimeout(() => evalInput.focus(), 50);
+        }
+
+        async function sendEvalMessage() {
+            const text = evalInput.value.trim();
+            if (!text) return;
+            evalInput.value = '';
+            if (text === '退出') {
+                closeEvalOverlay();
+                return;
+            }
+            evalHistory.push({ role: 'user', content: text });
+            appendEvalMessage('user', text);
+            await requestEvaluation(text);
+        }
+
+        function markCurrentNodeCompleted() {
+            if (!currentNode) return;
+            currentNode.status = 'completed';
+            const nodeDiv = document.getElementById(currentNode.id);
+            if (nodeDiv) {
+                nodeDiv.classList.remove('active', 'locked');
+                nodeDiv.classList.add('completed');
+            }
+            setStatusBadge(currentNode.status);
+            svg.innerHTML = '';
+            renderEdges();
+            closeEvalOverlay();
+        }
+
+        detailBackdrop.addEventListener('click', closeDetailPanel);
+        detailOverlay.addEventListener('click', (event) => {
+            if (event.target === detailOverlay) {
+                closeDetailPanel();
+            }
+        });
+        detailPanel.addEventListener('click', (event) => event.stopPropagation());
+        closeDetailBtn.addEventListener('click', closeDetailPanel);
+        adviceBtn.addEventListener('click', getLearningAdvice);
+        regenAdviceBtn.addEventListener('click', () => getLearningAdvice(true));
+        startEvalBtn.addEventListener('click', openEvalOverlay);
+        enterDetailBtn.addEventListener('click', () => {
+            if (currentNode && currentNode.link) {
+                window.location.href = currentNode.link;
+            }
+        });
+        exitEvalBtn.addEventListener('click', closeEvalOverlay);
+        sendEvalBtn.addEventListener('click', sendEvalMessage);
+        evalInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendEvalMessage();
+            }
+        });
+        markCompletedBtn.addEventListener('click', markCurrentNodeCompleted);
+
+        // 简单的平移拖拽功能
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.pageX;
+            startY = e.pageY;
+            // 简单模拟平移（由于是绝对定位，实际开发建议用 transform）
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+    </script>
+</body>
+</html>
