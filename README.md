@@ -5,6 +5,9 @@
 ### Project Overview
 Personal Learning Agent is a personal learning tracking system built with RAG and LangGraph-oriented agent workflow design. It visualizes learning progress as a skill tree, so each topic can be tracked with clear dependency relationships. It also adds Socratic-style evaluation to test real understanding instead of passive completion. The system combines memory retrieval and targeted guidance generation based on personal study history.
 
+### System Architecture 
+User Input → Flask Routing Layer → Two Branches (RAG Question-Answer Chain and Evaluation Agent Chain) → FAISS Retrieval → LLM Generation → Suggestion Persistence
+
 ### Features
 - **Skill Tree Map**
   - Visual learning path with dependency lines
@@ -84,6 +87,9 @@ I built this project on my fourth day of learning Agent development. Starting fr
 
 ### 项目简介
 Personal Learning Agent 是一个基于 RAG 与 LangGraph 思路构建的个人学习追踪系统。它通过技能树可视化学习路径，让每个知识点的依赖关系和进度状态清晰可见。系统引入苏格拉底式追问评估，检验是否真正掌握，而不是只做被动打卡。它还会结合个人学习记录进行检索，生成更有针对性的学习建议。
+
+### 系统架构
+用户输入 → Flask路由层 → 两条分支（RAG问答链 和 评估Agent链）→ FAISS检索 → LLM生成 → 建议持久化
 
 ### 功能特性
 - **技能树地图**
