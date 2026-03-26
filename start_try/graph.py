@@ -10,7 +10,7 @@ class ChatState(TypedDict):
 llm = ChatOpenAI(
     model="openrouter/hunter-alpha",
     base_url="https://openrouter.ai/api/v1",
-    api_key="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",
+    api_key="",
 )
 # 3 节点1：接收输入
 def input_node(state: ChatState):
@@ -96,7 +96,7 @@ docs = splitter.create_documents([text])
 embeddings = OpenAIEmbeddings(
     model="Qwen/Qwen3-Embedding-8B",
     base_url="https://api.siliconflow.com/v1",
-    api_key="sk-wqrfxsayhuvotcgxdnblughvvvetdjngvvvkpdhhzgqlmoul"
+    api_key=""
 )
 
 # 4 构建 FAISS 向量数据库
@@ -106,7 +106,7 @@ vectorstore = FAISS.from_documents(
 )
 
 # 5 LLM
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = ""
 llm = ChatOpenAI(
     model="openrouter/hunter-alpha",
     api_key=OPENROUTER_API_KEY,
