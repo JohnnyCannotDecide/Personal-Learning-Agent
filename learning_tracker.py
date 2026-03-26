@@ -13,7 +13,7 @@ class PersonalBrainAgent:
 
         os.makedirs(self.db_dir, exist_ok=True)
         # ✅ 你指定的 API 形式
-        OPENROUTER_API_KEY = "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"
+        OPENROUTER_API_KEY = ""
         self.llm = ChatOpenAI(
             model="openrouter/hunter-alpha",
             api_key=OPENROUTER_API_KEY,
@@ -24,7 +24,7 @@ class PersonalBrainAgent:
         self.embeddings = OpenAIEmbeddings(
             model="Qwen/Qwen3-Embedding-8B",
             base_url="https://api.siliconflow.com/v1",
-            api_key="sk-wqrfxsayhuvotcgxdnblughvvvetdjngvvvkpdhhzgqlmoul"
+            api_key=""
         )
 
         print("已加载 API 模型（LLM + Embedding）")
