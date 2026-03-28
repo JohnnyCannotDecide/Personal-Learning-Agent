@@ -8,6 +8,7 @@ from collections import Counter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from dotenv import load_dotenv
+from sentence_transformers import CrossEncoder
 
 class PersonalBrainAgent:
     def __init__(self, db_dir="learning_db"):
@@ -39,6 +40,8 @@ class PersonalBrainAgent:
 
         print("已加载 API 模型（LLM + Embedding）")
 
+        self.reranker = CrossEncoder('BAAI/bge-reranker-base', max_length=512)
+
         self._load_or_create_db()
 
     def _load_or_create_db(self):
@@ -61,26 +64,31 @@ class PersonalBrainAgent:
         cjk_bigrams = [a + b for a, b in zip(cjk_chars, cjk_chars[1:])]
         return word_tokens + cjk_chars + cjk_bigrams
 
-    def _bm25_rank(self, query, top_k=3, k1=1.5, b=0.75):
+    def _bm25_rank(self, query, top_k=3, k1=1.5, b=0.75, candidate_indices=None):
         if not self.metadata:
             return []
-        corpus_tokens = []
+        indices = candidate_indices if candidate_indices is not None else list(range(len(self.metadata)))
+        if not indices:
+            return []
+        corpus_tokens = {}
         doc_freq = Counter()
-        doc_lengths = []
-        for record in self.metadata:
+        doc_lengths = {}
+        for idx in indices:
+            record = self.metadata[idx]
             text = f"{record.get('title', '')} {record.get('content', '')}"
             tokens = self._tokenize(text)
-            corpus_tokens.append(tokens)
-            doc_lengths.append(len(tokens))
+            corpus_tokens[idx] = tokens
+            doc_lengths[idx] = len(tokens)
             for token in set(tokens):
                 doc_freq[token] += 1
-        avgdl = sum(doc_lengths) / len(doc_lengths) if doc_lengths else 0.0
+        avgdl = sum(doc_lengths.values()) / len(doc_lengths) if doc_lengths else 0.0
         query_tokens = self._tokenize(query)
         if not query_tokens or avgdl == 0:
             return []
         scores = []
-        n_docs = len(self.metadata)
-        for idx, tokens in enumerate(corpus_tokens):
+        n_docs = len(indices)
+        for idx in indices:
+            tokens = corpus_tokens[idx]
             tf = Counter(tokens)
             doc_len = doc_lengths[idx]
             score = 0.0
@@ -97,17 +105,56 @@ class PersonalBrainAgent:
         scores.sort(key=lambda x: x[1], reverse=True)
         return [idx for idx, _ in scores[:top_k]]
 
-    def _vector_rank(self, query, top_k=3):
+    def _vector_rank(self, query, top_k=3, candidate_indices=None):
         if self.index is None or self.index.ntotal == 0:
             return []
         query_embedding = self.embeddings.embed_query(query)
         query_embedding = np.array([query_embedding]).astype("float32")
+        if candidate_indices is not None:
+            if not candidate_indices:
+                return []
+            query_vec = query_embedding[0]
+            scored = []
+            for idx in candidate_indices:
+                if idx < 0 or idx >= len(self.metadata):
+                    continue
+                vec = self.index.reconstruct(int(idx))
+                dist = float(np.sum((vec - query_vec) ** 2))
+                scored.append((idx, dist))
+            scored.sort(key=lambda x: x[1])
+            return [idx for idx, _ in scored[:top_k]]
         _, indices = self.index.search(query_embedding, top_k)
         valid_indices = []
         for idx in indices[0]:
             if idx != -1 and idx < len(self.metadata):
                 valid_indices.append(idx)
         return valid_indices
+
+    def _get_collection_indices(self):
+        collection_a = []
+        collection_b = []
+        for idx, record in enumerate(self.metadata):
+            source = (record.get("source") or "").strip().lower()
+            if source in {"pdf", "upload", "upload_pdf"}:
+                collection_b.append(idx)
+            else:
+                collection_a.append(idx)
+        return collection_a, collection_b
+
+    def _hybrid_search_indices(self, query, candidate_indices, top_k=10):
+        if not candidate_indices:
+            return []
+        vector_rank = self._vector_rank(
+            query,
+            top_k=min(len(candidate_indices), top_k * 3),
+            candidate_indices=candidate_indices
+        )
+        bm25_rank = self._bm25_rank(
+            query,
+            top_k=min(len(candidate_indices), top_k * 3),
+            candidate_indices=candidate_indices
+        )
+        return self._rrf_fuse([vector_rank, bm25_rank], top_k=min(top_k, len(candidate_indices)), k=60)
 
     def _rrf_fuse(self, rank_lists, top_k=3, k=60):
         fused = {}
@@ -201,13 +248,34 @@ class PersonalBrainAgent:
                     json.dump(self.metadata, f, ensure_ascii=False, indent=2)
                 return True
             return False
+    def hybrid_search(self, query, top_k=10):
+        if not self.metadata:
+            return []
+        final_indices = self._hybrid_search_indices(query, list(range(len(self.metadata))), top_k=top_k)
+        return [self.metadata[idx] for idx in final_indices]
+
     def search(self, query, top_k=3):
         if not self.metadata:
             return []
-        vector_rank = self._vector_rank(query, top_k=top_k * 3)
-        bm25_rank = self._bm25_rank(query, top_k=top_k * 3)
-        final_indices = self._rrf_fuse([vector_rank, bm25_rank], top_k=top_k, k=60)
-        return [self.metadata[idx] for idx in final_indices]
+        collection_a_indices, collection_b_indices = self._get_collection_indices()
+        recall_k = max(top_k * 2, 5)
+        recalled_a = self._hybrid_search_indices(query, collection_a_indices, top_k=recall_k)
+        recalled_b = self._hybrid_search_indices(query, collection_b_indices, top_k=recall_k)
+        merged_indices = []
+        for idx in recalled_a + recalled_b:
+            if idx not in merged_indices:
+                merged_indices.append(idx)
+        if not merged_indices:
+            return []
+        candidates = [self.metadata[idx] for idx in merged_indices]
+        pairs = [[query, r["content"]] for r in candidates]
+        scores = self.reranker.predict(pairs)
+        ranked = sorted(
+            zip(scores, candidates),
+            key=lambda x: x[0],
+            reverse=True
+        )
+        return [r for _, r in ranked[:top_k]]
 
     def evaluate_search_precision_at_3(self):
         # 目的：构造可复现的检索评估集，把“感觉准确”变成可验证数字。

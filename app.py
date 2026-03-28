@@ -3,13 +3,19 @@ from learning_tracker import PersonalBrainAgent
 import os
 import json
 from openai import OpenAI
+import fitz
+import warnings
+from dotenv import load_dotenv
+load_dotenv()
 
+warnings.filterwarnings("ignore")
 app = Flask(__name__)
 
 # 初始化 Agent
 agent = PersonalBrainAgent()
+openrouter_api_key = (os.getenv("OPENROUTER_API_KEY") or "").strip()
 openai_client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    api_key=openrouter_api_key,
     base_url="https://openrouter.ai/api/v1"
 )
 
@@ -37,19 +43,39 @@ def build_prompt_from_query(query, top_k=3):
 """
 
 def stream_llm(query):
+    if not openrouter_api_key:
+        yield "data: 系统错误：未配置 OPENROUTER_API_KEY，请先在 .env 配置有效密钥。\n\n"
+        yield "data: [DONE]\n\n"
+        return
     prompt = build_prompt_from_query(query)
-    stream = openai_client.chat.completions.create(
-        model="google/gemma-3-12b-it:free",
-        messages=[{"role": "user", "content": prompt}],
-        stream=True
-    )
-    for chunk in stream:
-        if not chunk.choices:
-            continue
-        delta = chunk.choices[0].delta.content
-        if delta:
-            yield f"data: {delta}\n\n"
-    yield "data: [DONE]\n\n"
+    try:
+        stream = openai_client.chat.completions.create(
+            model="google/gemma-3-12b-it:free",
+            messages=[{"role": "user", "content": prompt}],
+            stream=True
+        )
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield f"data: {delta}\n\n"
+    except Exception as e:
+        error_text = str(e)
+        if "401" in error_text or "AuthenticationError" in error_text:
+            yield "data: 认证失败：OPENROUTER_API_KEY 无效或已过期，请更换有效密钥。\n\n"
+        else:
+            yield f"data: 流式请求失败：{error_text}\n\n"
+    finally:
+        yield "data: [DONE]\n\n"
+
+def extract_pdf_text(pdf_bytes):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    doc.close()
+    return text
 
 # 注入用户背景（检查是否已存在，避免重复添加）
 def inject_user_background():
@@ -196,14 +222,27 @@ def add_record():
 
 @app.route('/upload', methods=['POST'])
 def upload_document():
-    data = request.json or {}
-    title = (data.get('title') or '').strip()
-    content = (data.get('content') or '').strip()
-    
+    source = "upload"
+    if request.files and 'file' in request.files:
+        file = request.files['file']
+        filename = file.filename or ''
+        title = (request.form.get('title') or '').strip() or os.path.splitext(filename)[0]
+        is_pdf = (file.mimetype or '').lower() == 'application/pdf' or filename.lower().endswith('.pdf')
+        raw_bytes = file.read()
+        if is_pdf:
+            content = extract_pdf_text(raw_bytes).strip()
+            source = "pdf"
+        else:
+            content = raw_bytes.decode('utf-8', errors='ignore').strip()
+            source = "upload"
+    else:
+        data = request.json or {}
+        title = (data.get('title') or '').strip()
+        content = (data.get('content') or '').strip()
+        source = "upload"
     if not title or not content:
         return jsonify({"error": "title and content required"}), 400
-    
-    chunk_count = agent.add_document(title, content)
+    chunk_count = agent.add_document(title, content, source=source)
     return jsonify({
         "status": "success",
         "chunks": chunk_count,

@@ -49,9 +49,20 @@
         <div class="p-4 border-b border-slate-800 space-y-2">
             <input id="upload-title" type="text" placeholder="文章标题" class="w-full bg-slate-800 border-none rounded-lg p-2 focus:ring-2 focus:ring-sky-500 outline-none">
             <textarea id="upload-content" placeholder="粘贴文章内容" class="w-full bg-slate-800 border-none rounded-lg p-2 h-28 focus:ring-2 focus:ring-sky-500 outline-none resize-none"></textarea>
+            <input id="upload-pdf-file" type="file" accept=".pdf,application/pdf" onchange="onPdfFileChange(event)" class="w-full text-xs text-slate-300 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-slate-700 file:text-slate-100 hover:file:bg-slate-600">
+            <div id="upload-pdf-meta" class="text-xs text-slate-500"></div>
             <div class="flex items-center justify-between">
-                <button onclick="uploadDocument()" class="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg transition font-medium text-sm">上传到知识库</button>
+                <div class="flex gap-2">
+                    <button onclick="uploadDocument()" class="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg transition font-medium text-sm">上传文本</button>
+                    <button onclick="uploadPdfDocument()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg transition font-medium text-sm">上传 PDF</button>
+                </div>
                 <span id="upload-feedback" class="text-xs text-slate-400"></span>
+            </div>
+            <div id="upload-progress-wrap" class="hidden">
+                <div class="w-full h-2 bg-slate-700 rounded overflow-hidden">
+                    <div id="upload-progress-bar" class="h-2 bg-sky-500 w-0 transition-all"></div>
+                </div>
+                <div id="upload-progress-text" class="text-xs text-slate-400 mt-1">0%</div>
             </div>
         </div>
         <div id="timeline" class="flex-1 overflow-y-auto p-6 space-y-6">
@@ -196,21 +207,132 @@
 
             feedback.innerText = '上传中...';
             try {
-                const res = await fetch('/upload', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ title, content })
-                });
-                const data = await res.json();
-                if (!res.ok) {
+                const { ok, data } = await uploadWithProgress('/upload', JSON.stringify({ title, content }), {'Content-Type': 'application/json'});
+                if (!ok) {
                     throw new Error(data.error || '上传失败');
                 }
                 feedback.innerText = `已切分为 ${data.chunks} 个片段`;
                 titleInput.value = '';
                 contentInput.value = '';
             } catch (err) {
-                feedback.innerText = `上传失败：${err.message}`;
+                feedback.innerText = formatUploadError(err);
             }
+        }
+
+        async function uploadPdfDocument() {
+            const titleInput = document.getElementById('upload-title');
+            const fileInput = document.getElementById('upload-pdf-file');
+            const feedback = document.getElementById('upload-feedback');
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                feedback.innerText = '请选择 PDF 文件';
+                return;
+            }
+            const formData = new FormData();
+            const title = titleInput.value.trim();
+            if (title) {
+                formData.append('title', title);
+            }
+            formData.append('file', file);
+            feedback.innerText = '上传中...';
+            try {
+                const { ok, data } = await uploadWithProgress('/upload', formData);
+                if (!ok) {
+                    throw new Error(data.error || '上传失败');
+                }
+                feedback.innerText = `已切分为 ${data.chunks} 个片段`;
+                fileInput.value = '';
+                titleInput.value = '';
+                document.getElementById('upload-pdf-meta').innerText = '';
+            } catch (err) {
+                feedback.innerText = formatUploadError(err);
+            }
+        }
+
+        function onPdfFileChange(event) {
+            const file = event.target.files && event.target.files[0];
+            const meta = document.getElementById('upload-pdf-meta');
+            if (!file) {
+                meta.innerText = '';
+                return;
+            }
+            meta.innerText = `已选择：${file.name}（${formatFileSize(file.size)}）`;
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes && bytes !== 0) return '';
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        async function parseUploadResponse(res) {
+            const raw = await res.text();
+            try {
+                return JSON.parse(raw);
+            } catch (_) {
+                return { error: raw || `HTTP ${res.status}` };
+            }
+        }
+
+        function parseUploadResponseText(raw, status) {
+            try {
+                return JSON.parse(raw);
+            } catch (_) {
+                return { error: raw || `HTTP ${status}` };
+            }
+        }
+
+        function setUploadProgress(percent) {
+            const value = Math.max(0, Math.min(100, Math.round(percent)));
+            document.getElementById('upload-progress-bar').style.width = `${value}%`;
+            document.getElementById('upload-progress-text').innerText = `${value}%`;
+        }
+
+        function showUploadProgress() {
+            document.getElementById('upload-progress-wrap').classList.remove('hidden');
+            setUploadProgress(0);
+        }
+
+        function hideUploadProgress() {
+            setTimeout(() => {
+                document.getElementById('upload-progress-wrap').classList.add('hidden');
+            }, 600);
+        }
+
+        function uploadWithProgress(url, payload, headers = {}) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url, true);
+                Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+                showUploadProgress();
+                xhr.upload.onprogress = (evt) => {
+                    if (evt.lengthComputable) {
+                        setUploadProgress((evt.loaded / evt.total) * 100);
+                    }
+                };
+                xhr.onload = () => {
+                    setUploadProgress(100);
+                    hideUploadProgress();
+                    resolve({
+                        ok: xhr.status >= 200 && xhr.status < 300,
+                        status: xhr.status,
+                        data: parseUploadResponseText(xhr.responseText, xhr.status)
+                    });
+                };
+                xhr.onerror = () => {
+                    hideUploadProgress();
+                    reject(new TypeError('Failed to fetch'));
+                };
+                xhr.send(payload);
+            });
+        }
+
+        function formatUploadError(err) {
+            if (err instanceof TypeError && String(err.message).includes('Failed to fetch')) {
+                return '上传失败：无法连接后端。请确认 Flask 服务已启动（python app.py），并检查后端是否因依赖报错退出。';
+            }
+            return `上传失败：${err.message}`;
         }
 
         // UI 辅助函数

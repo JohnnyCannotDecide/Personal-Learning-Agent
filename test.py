@@ -1,9 +1,19 @@
-from langchain_openai import ChatOpenAI
+# test_api.py
 import os
+from dotenv import load_dotenv
+from openai import OpenAI
 
-llm = ChatOpenAI(
-    model="google/gemma-3-12b-it:free",
-    api_key="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",
-    base_url="https://openrouter.ai/api/v1",
+load_dotenv()
+key = os.getenv("OPENROUTER_API_KEY")
+print("Key:", key)
+
+client = OpenAI(
+    api_key=key,
+    base_url="https://openrouter.ai/api/v1"
 )
-print(llm.invoke("hi").content)
+
+resp = client.chat.completions.create(
+    model="google/gemma-3-12b-it:free",
+    messages=[{"role": "user", "content": "hi"}]
+)
+print(resp.choices[0].message.content)
