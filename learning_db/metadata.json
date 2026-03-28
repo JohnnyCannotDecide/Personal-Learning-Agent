@@ -63,5 +63,107 @@
     "date": "3/17",
     "title": "系统完善",
     "content": "把Demo做得初具规模，但如果添加复杂功能还需要亦步亦趋，将之上传到github作为一个小结即可。"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 1/17]",
+    "content": "今天，我们将系统性地从零构建一个定制化Agent。接续上期对Agent原理的探讨，本节以ReAct范式为基础（相关背景请参阅往期文章），逐步实现一个轻量级大模型Agent的完整工作流。\n\n️ 第一步：构建工具库\nReAct 范式中，Agent 依赖外部工具执行任务。以下以 tools.py 中的实现为例。其中包含了谷歌搜索的工具函数。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 2/17]",
+    "content": "{\n    'name_for_human': '谷歌搜索',\n    'name_for_model': 'google_search',\n    'description_for_model': '谷歌搜索是一个通用搜索引擎，可用于访问互联网、查询百科知识、了解时事新闻等。',\n    'parameters': [\n        {\n            'name': 'search_query',\n            'description': '搜索关键词或短语',\n            'required': True,\n            'schema': {'type': 'string'},\n        }\n    ],\n}\n工具定义需明确四个核心要素：\n\n人类可读名称（name_for_human）\n模型调用标识（name_for_model）\n功能描述（description_for_model）\n参数规范（parameters）\n谷歌搜索的调用函数实现如下，基于Serper API（新注册赠送2500次免费调用）：",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 3/17]",
+    "content": "def google_search(search_query: str):\n    url = \"https://google.serper.dev/search\"\n\n    payload = json.dumps({\"q\": search_query})\n    headers = {\n        'X-API-KEY': 'xxxxxx',\n        'Content-Type': 'application/json'\n    }\n\n    response = requests.request(\"POST\", url, headers=headers, data=payload).json()\n\n    return response['organic'][0]['snippet']\n这样，一个工具就完成了。接下来，为了契合代码智能的主题，我们再增加一个代码编译检测的工具。\n\n首先代码检查函数定义如下：",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 4/17]",
+    "content": "{\n    'name_for_human': '代码检查',\n    'name_for_model': 'code_check',\n    'description_for_model': '代码检查是一个代码检查工具，可用于检查代码的错误和问题。',\n    'parameters': [\n        {\n            'name': 'language',\n            'description': '语言类型全称',\n            'required': True,\n            'schema': {'type': 'string'},\n        },\n        {\n            'name': 'source_code',\n            'description': '源代码',\n            'required': True,\n            'schema': {'type': 'string'},\n        }\n    ]\n}",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 5/17]",
+    "content": "}\n    ]\n}\n代码检查函数涉及到两个参数，分别是语言类型和源代码。代码检查函数 check_code 的实现大家可以在仓库中 tree_sitter_parser.py 中找到。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 6/17]",
+    "content": "这样，两个工具就完成了。接下来，我们开始构造Agent流程。\n\n第二步：搭建ReAct流程\nReAct范式通过迭代执行“思考-行动-观察-总结”四个环节完成任务：\n\n思考（Thought）：Agent分析上下文与任务目标\n行动（Action）：Agent决策并调用工具\n观察（Observation）：Agent解析工具返回结果\n总结（Final Answer）：Agent输出最终结论\n根据上述的流程，项目中ReAct对应的提示词如下， 在 agent.py 中：",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 7/17]",
+    "content": "Answer the following questions as best you can. You have access to the following tools:\ngoogle_search: Call this tool to interact with the 谷歌搜索 API. What is the 谷歌搜索 API useful for? 谷歌搜索是一个通用搜索引擎，可用于访问互联网、查询百科知识、了解时事新闻等。 Parameters: [{'name': 'search_query', 'description': '搜索关键词或短语', 'required': True, 'schema': {'type': 'string'}}] Format the arguments as a JSON object.",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 8/17]",
+    "content": "code_check: Call this tool to interact with the 代码检查 API. What is the 代码检查 API useful for? 代码检查是一个代码检查工具，可用于检查代码的错误和问题。 Parameters: [{'name': 'language', 'description': '语言类型全称', 'required': True, 'schema': {'type': 'string'}}, {'name': 'source_code', 'description': '源代码', 'required': True, 'schema': {'type': 'string'}}] Format the arguments as a JSON object.\nUse the following format:",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 9/17]",
+    "content": "Use the following format:\nQuestion: the input question you must answer Thought: you should always think about what to do Action: the action to take, should be one of [{tool_names}] Action Input: the input to the action Observation: the result of the action ... (this Thought/Action/Action Input/Observation can be repeated zero or more times) Thought: I now know the final answer Final Answer: the final answer to the original input question\nBegin!\n提示词分为两个部分，首先想大模型叙述了可支配其调用的工具，包括了谷歌搜索和代码检查。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 10/17]",
+    "content": "然后，提示词中描述了ReAct的流程，包括了思考、行动、观察和总结。\n\n在Agent流程的建立上，是两阶段进行的。\n\n第一阶段：决策阶段：模型解析用户问题并生成工具调用指令：\n第一个阶段会告诉大模型整体的流程和用户提出的问题，让大模型进行思考，并决定使用什么工具。\n\n这段逻辑在 agent.py 中的 text_completion 函数的前三行中。\n\ndef text_completion(self, text, history=[]):\n    text = \"\\nQuestion:\" + text\n    response, his = self.model.chat(text, history, self.system_prompt)\n    print(\"first response:\\n\")\n    print(response)\n    print(\"-\"*100)\n第二阶段：执行阶段：解析模型输出并调用工具，并总结输出结果：\n然后，程序会读取大模型请求执行的方法，并执行。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 11/17]",
+    "content": "# 解析大模型请求执行的方法\ndef parse_latest_plugin_call(self, text):\n    plugin_name, plugin_args = '', ''\n    i = text.rfind('\\nAction:')\n    j = text.rfind('\\nAction Input:')\n    k = text.rfind('\\nObservation:')\n    if 0 <= i < j:  # If the text has `Action` and `Action input`,\n        if k < j:  # but does not contain `Observation`,\n            text = text.rstrip() + '\\nObservation:'  # Add it back.\n        k = text.rfind('\\nObservation:')\n        plugin_name = text[i + len('\\nAction:') : j].strip()",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 12/17]",
+    "content": "plugin_args = text[j + len('\\nAction Input:') : k].strip()\n        text = text[:k]\n    return plugin_name, plugin_args, text",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 13/17]",
+    "content": "# 执行大模型请求执行的方法\ndef call_plugin(self, plugin_name, plugin_args):\n    plugin_args = json5.loads(plugin_args)\n\n    if plugin_name == 'google_search':\n        return '\\nObservation:' + self.tool.google_search(**plugin_args)\n    elif plugin_name == 'code_check':\n        return '\\nObservation:' + self.tool.code_check(**plugin_args)\n可以从 parse_latest_plugin_call 看出，目前解析大模型的方法还是通过硬匹配的方式，如果大模型输出出现些许偏差，就会导致解析失败。\n\n目前只支持了两个工具，如果增加更多的工具，也可能会导致模型输出异常，所以function calling的数量并不是越多越好的。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 14/17]",
+    "content": "通过 call_plugin 函数得到结果后，我们继续进行ReAct的第二阶段，执行结果的总结。\n\nfunction_call_result = self.call_plugin(plugin_name, plugin_args)\nresponse += function_call_result\nresponse, his = self.model.chat(response, his, self.system_prompt)\n观察内容是我们自己去拼上去的，在二阶段总结过程中，大模型可以知道前面的思考、行动、观察内容，在这个基础上进行总结。\n\n以上就是基于ReAct范式的Agent流程。\n\n第三步：来场实战测试\n最后我们在给一个简单的测试用例，看下Agent的执行效果吧。\n\n以下测试用例演示Agent修复Python语法错误的能力：",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 15/17]",
+    "content": "以下测试用例演示Agent修复Python语法错误的能力：\n\ndef hello_world(): print(\"Hello, World!\")\ndef hello_world2()::::: print(\"Hello, World2!\")\n请修复这段代码的错误。\n这里我用了很简单的一个case，在hello_world2函数中，我故意写错了多个冒号，期待Agent可以修复这个错误。\n\n第一阶段输出：\n\nThought: 代码中存在语法错误，需要调用代码检查工具来修复。 Action: code_check Action Input: {\"language\": \"Python\", \"source_code\": \"def hello_world():\\n print(\"Hello, World!\")\\n\\n def hello_world2():::::\\n print(\"Hello, World2!\")\\n\\n \"}\n大模型在思考后，决定调用代码检查工具来修复错误。给出了调用 code_check 方法，并给出了正确的参数。\n\n工具执行结果：",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 16/17]",
+    "content": "工具执行结果：\n\nObservation:code compile error at (3, 23) to (3, 27), the error text is: \"b'::::'\"\n通过TreeSitter可以拿到编译异常的代码位置和错误代码，因此我们将这些信息返回给大模型。\n\nAgent最终输出：\n\nThought: 观察到的错误信息表明在定义hello_world2函数时存在多余的冒号。现在知道了错误原因，可以直接给出修复后的代码。 Final Answer: 修复后的代码如下： def hello_world(): print(\"Hello, World!\")\ndef hello_world2(): print(\"Hello, World2!\")\n在原始代码中，def hello_world2()::::: 这里多了几个冒号，将其修正为 def hello_world2(): 即可。\n在工具帮助下，Agent成功修复了代码中的错误。\n\n当然这个示例太简单了，即使没有工具，大模型应该也能输出一段修复后的代码来。\n\n先通过这个简单的例子，来了解Agent的运行流程。",
+    "source": "upload"
+  },
+  {
+    "date": "uploaded",
+    "title": "从零开始搭建一个属于自己的Agent [chunk 17/17]",
+    "content": "先通过这个简单的例子，来了解Agent的运行流程。\n\n总结与展望\n今天，我们通过一个简单的例子，了解了Agent的运行流程。 我们可以看到，Agent的工作流程可总结为：\n\n问题解析：模型分析任务并选择工具\n工具调用：执行外部工具获取结果\n结果整合：基于反馈生成最终输出\n完整代码已开源至 TinyCodeBase\n\nhttps://github.com/codemilestones/TinyCodeBase\n\n欢迎大家来点个 star。\n\n可以看到本次实现的Agent，还存在很多问题，比如：\n\nReAct流程仅能执行一轮，无法进行和工具的多轮交互。\n代码检查工具能力有限，仅能检查初级的静态语法错误，对运行时错误无法检测。\n后面我们会进一步优化 TinyCodeBase 项目，使其能力更加完善。\n\n在继续强化能力之前，我们还缺少一个重要的环节，那就是大模型能力的评估。",
+    "source": "upload"
   }
 ]

@@ -3,7 +3,8 @@ import json
 import faiss
 import numpy as np
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from dotenv import load_dotenv
 
 class PersonalBrainAgent:
     def __init__(self, db_dir="learning_db"):
@@ -13,18 +14,24 @@ class PersonalBrainAgent:
 
         os.makedirs(self.db_dir, exist_ok=True)
         # ✅ 你指定的 API 形式
-        OPENROUTER_API_KEY = "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"
+        load_dotenv()
+
         self.llm = ChatOpenAI(
-            model="openrouter/hunter-alpha",
-            api_key=OPENROUTER_API_KEY,
+            model="google/gemma-3-12b-it:free",
+            api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0.7,
         )
 
         self.embeddings = OpenAIEmbeddings(
             model="Qwen/Qwen3-Embedding-8B",
-            base_url="https://api.siliconflow.com/v1",
-            api_key="sk-wqrfxsayhuvotcgxdnblughvvvetdjngvvvkpdhhzgqlmoul"
+            base_url="https://api.siliconflow.cn/v1",
+            api_key=os.getenv("SILICONFLOW_API_KEY"),
+        )
+        # 目的：引入可复用的 chunking 流程，短文本几乎不切分，长文本自动切分。
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50
         )
 
         print("已加载 API 模型（LLM + Embedding）")
@@ -45,17 +52,27 @@ class PersonalBrainAgent:
     def _format_text_for_embedding(self, record):
         return f"日期:{record['date']} 主题:{record['title']} 内容:{record['content']}"
 
+    def _build_record_embedding(self, record):
+        # 目的：先对内容做 chunking，为长文本接入预留语义切分能力。
+        chunks = self.text_splitter.split_text(record['content'])
+        if not chunks:
+            chunks = [record['content']]
+        # 目的：将同一条记录的多个 chunk 分别向量化，保留局部语义。
+        chunk_texts = [f"日期:{record['date']} 主题:{record['title']} 内容:{chunk}" for chunk in chunks]
+        chunk_embeddings = self.embeddings.embed_documents(chunk_texts)
+        chunk_embeddings = np.array(chunk_embeddings).astype("float32")
+        # 目的：将 chunk 向量聚合为单条记录向量，兼容当前 metadata 与删除逻辑。
+        return chunk_embeddings.mean(axis=0)
+
     def add(self, records):
         if isinstance(records, dict):
             records = [records]
-
-        texts = [self._format_text_for_embedding(r) for r in records]
+        if not records:
+            return
 
         print(f"生成 {len(records)} 条 embedding（API）...")
-
-        # ✅ LangChain embedding
-        embeddings = self.embeddings.embed_documents(texts)
-        embeddings = np.array(embeddings).astype("float32")
+        # 目的：每条记录先执行 chunking，再聚合成单向量写入 FAISS。
+        embeddings = np.array([self._build_record_embedding(r) for r in records]).astype("float32")
 
         # 初始化 FAISS
         if self.index is None:
@@ -70,7 +87,27 @@ class PersonalBrainAgent:
             json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
         print("添加完成\n")
-
+        
+    def add_document(self, title, content, source="upload"):
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50,
+            separators=["\n\n", "\n", "。", "，", " ", ""]
+        )
+        chunks = splitter.split_text(content)
+        
+        records = []
+        for i, chunk in enumerate(chunks):
+            records.append({
+                "date": "uploaded",
+                "title": f"{title} [chunk {i+1}/{len(chunks)}]",
+                "content": chunk,
+                "source": source  # 区分是上传资料还是学习记录
+            })
+        
+        self.add(records)
+        return len(chunks)  # 返回切了多少块，方便前端显示
+    
     def delete(self, index_to_remove):
             if 0 <= index_to_remove < len(self.metadata):
                 # 1. 从 metadata 移除
@@ -80,10 +117,8 @@ class PersonalBrainAgent:
                 if not self.metadata:
                     self.index = None
                 else:
-                    texts = [self._format_text_for_embedding(r) for r in self.metadata]
-                    embeddings = self.embeddings.embed_documents(texts)
-                    embeddings = np.array(embeddings).astype("float32")
-                    
+                    # 目的：删除后按同一套 chunking + 聚合逻辑重建索引，保持检索一致性。
+                    embeddings = np.array([self._build_record_embedding(r) for r in self.metadata]).astype("float32")
                     dimension = embeddings.shape[1]
                     self.index = faiss.IndexFlatL2(dimension)
                     self.index.add(embeddings)
@@ -114,6 +149,27 @@ class PersonalBrainAgent:
                 results.append(self.metadata[idx])
 
         return results
+
+    def evaluate_search_precision_at_3(self):
+        # 目的：构造可复现的检索评估集，把“感觉准确”变成可验证数字。
+        eval_cases = [
+            ("我该怎么定位Agent方向的职业目标？", "市场锚定"),
+            ("我需要补强简历表达能力，应该回顾什么？", "简历分析"),
+            ("怎么理解多轮对话的上下文管理？", "接口实战"),
+            ("LangGraph 的核心编排思想是什么？", "架构初探"),
+            ("RAG 怎么降低模型胡说八道？", "数据增强"),
+        ]
+        hit_count = 0
+        for query, expected_title in eval_cases:
+            results = self.search(query, top_k=3)
+            recalled_titles = [r["title"] for r in results]
+            hit = expected_title in recalled_titles
+            hit_count += int(hit)
+            print(f"[Eval] Query: {query}")
+            print(f"[Eval] 期望: {expected_title} | 召回: {recalled_titles} | Hit: {hit}\n")
+        precision_at_3 = hit_count / (len(eval_cases) * 3)
+        print(f"[Eval] Precision@3 = {precision_at_3:.4f} ({hit_count}/{len(eval_cases) * 3})")
+        return {"precision_at_3": precision_at_3, "hits": hit_count, "queries": len(eval_cases), "k": 3}
 
     def ask(self, query, top_k=3):
         results = self.search(query, top_k)
@@ -161,3 +217,5 @@ if __name__ == "__main__":
     print("=== 提问 ===")
     answer = agent.ask("我下一步应该学什么?")
     print(answer)
+    print("\n=== 检索评估 ===")
+    agent.evaluate_search_precision_at_3()
