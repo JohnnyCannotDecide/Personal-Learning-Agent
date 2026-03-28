@@ -2,6 +2,9 @@ import os
 import json
 import faiss
 import numpy as np
+import math
+import re
+from collections import Counter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from dotenv import load_dotenv
@@ -48,6 +51,71 @@ class PersonalBrainAgent:
             print("初始化新数据库...")
             self.index = None
             self.metadata = []
+
+    def _tokenize(self, text):
+        if not text:
+            return []
+        lower_text = text.lower()
+        word_tokens = re.findall(r"[a-z0-9_]+", lower_text)
+        cjk_chars = [ch for ch in text if "\u4e00" <= ch <= "\u9fff"]
+        cjk_bigrams = [a + b for a, b in zip(cjk_chars, cjk_chars[1:])]
+        return word_tokens + cjk_chars + cjk_bigrams
+
+    def _bm25_rank(self, query, top_k=3, k1=1.5, b=0.75):
+        if not self.metadata:
+            return []
+        corpus_tokens = []
+        doc_freq = Counter()
+        doc_lengths = []
+        for record in self.metadata:
+            text = f"{record.get('title', '')} {record.get('content', '')}"
+            tokens = self._tokenize(text)
+            corpus_tokens.append(tokens)
+            doc_lengths.append(len(tokens))
+            for token in set(tokens):
+                doc_freq[token] += 1
+        avgdl = sum(doc_lengths) / len(doc_lengths) if doc_lengths else 0.0
+        query_tokens = self._tokenize(query)
+        if not query_tokens or avgdl == 0:
+            return []
+        scores = []
+        n_docs = len(self.metadata)
+        for idx, tokens in enumerate(corpus_tokens):
+            tf = Counter(tokens)
+            doc_len = doc_lengths[idx]
+            score = 0.0
+            for token in query_tokens:
+                if token not in tf:
+                    continue
+                df = doc_freq.get(token, 0)
+                idf = math.log(1 + (n_docs - df + 0.5) / (df + 0.5))
+                freq = tf[token]
+                denom = freq + k1 * (1 - b + b * doc_len / avgdl)
+                score += idf * (freq * (k1 + 1)) / denom
+            if score > 0:
+                scores.append((idx, score))
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return [idx for idx, _ in scores[:top_k]]
+
+    def _vector_rank(self, query, top_k=3):
+        if self.index is None or self.index.ntotal == 0:
+            return []
+        query_embedding = self.embeddings.embed_query(query)
+        query_embedding = np.array([query_embedding]).astype("float32")
+        _, indices = self.index.search(query_embedding, top_k)
+        valid_indices = []
+        for idx in indices[0]:
+            if idx != -1 and idx < len(self.metadata):
+                valid_indices.append(idx)
+        return valid_indices
+
+    def _rrf_fuse(self, rank_lists, top_k=3, k=60):
+        fused = {}
+        for rank_list in rank_lists:
+            for rank, idx in enumerate(rank_list, start=1):
+                fused[idx] = fused.get(idx, 0.0) + 1.0 / (k + rank)
+        final_rank = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        return [idx for idx, _ in final_rank[:top_k]]
 
     def _format_text_for_embedding(self, record):
         return f"日期:{record['date']} 主题:{record['title']} 内容:{record['content']}"
@@ -134,21 +202,12 @@ class PersonalBrainAgent:
                 return True
             return False
     def search(self, query, top_k=3):
-        if self.index is None or self.index.ntotal == 0:
+        if not self.metadata:
             return []
-
-        # ✅ 查询 embedding
-        query_embedding = self.embeddings.embed_query(query)
-        query_embedding = np.array([query_embedding]).astype("float32")
-
-        D, I = self.index.search(query_embedding, top_k)
-
-        results = []
-        for idx in I[0]:
-            if idx != -1 and idx < len(self.metadata):
-                results.append(self.metadata[idx])
-
-        return results
+        vector_rank = self._vector_rank(query, top_k=top_k * 3)
+        bm25_rank = self._bm25_rank(query, top_k=top_k * 3)
+        final_indices = self._rrf_fuse([vector_rank, bm25_rank], top_k=top_k, k=60)
+        return [self.metadata[idx] for idx in final_indices]
 
     def evaluate_search_precision_at_3(self):
         # 目的：构造可复现的检索评估集，把“感觉准确”变成可验证数字。
