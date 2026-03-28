@@ -1,8 +1,8 @@
 """
 import openai
 client = openai.OpenAI(
-  api_key="sk-hLC8c2HA5B7WVjUo743fDd06Eb6a4768Ac41980cE017C0Bc", 
-  base_url="https://aihubmix.com/v1"
+  api_key="", 
+  base_url=""
 )
 response = client.chat.completions.create(
   model="gpt-4.1-free",
@@ -18,8 +18,8 @@ import openai
 
 # 初始化客户端
 client = openai.OpenAI(
-    api_key="sk-hLC8c2HA5B7WVjUo743fDd06Eb6a4768Ac41980cE017C0Bc", 
-    base_url="https://aihubmix.com/v1"
+    api_key="", 
+    base_url=""
 )
 
 # 1. 创建一个列表来存储对话历史
@@ -63,7 +63,7 @@ import openai
 # 1. 初始化客户端
 client = openai.OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key="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",
+  api_key="",
 )
 
 def check_sentiment(text):
@@ -131,8 +131,8 @@ import time
 
 # 1. 初始化客户端
 client = OpenAI(
-  base_url="https://openrouter.ai/api/v1",
-  api_key="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",
+  base_url="",
+  api_key="",
 )
 
 # 工具内部接入 API 请求 ---
@@ -241,11 +241,11 @@ from langchain_classic.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
 
 # 1. 配置 OpenRouter (保持不变)
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = ""
 llm = ChatOpenAI(
     model="openrouter/hunter-alpha",
     api_key=OPENROUTER_API_KEY,
-    base_url="https://openrouter.ai/api/v1",
+    base_url="",
     temperature=0.7,
 )
 # 2. LangChain 对话记忆
