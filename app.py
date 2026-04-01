@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, R
 from learning_tracker import PersonalBrainAgent
 import os
 import json
+import time
+import re
 from openai import OpenAI
 import fitz
 import warnings
@@ -106,6 +108,7 @@ def inject_user_background():
 inject_user_background()
 
 ADVICE_FILE = os.path.join(os.path.dirname(__file__), "advice.json")
+PATHS_FILE = os.path.join(os.path.dirname(__file__), "paths.json")
 
 def load_advice_map():
     if not os.path.exists(ADVICE_FILE):
@@ -120,6 +123,58 @@ def load_advice_map():
 def save_advice_map(data):
     with open(ADVICE_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def load_paths_data():
+    if not os.path.exists(PATHS_FILE):
+        return {"paths": {}}
+    try:
+        with open(PATHS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and isinstance(data.get("paths"), dict):
+            return data
+    except Exception:
+        pass
+    return {"paths": {}}
+
+
+def save_paths_data(data):
+    with open(PATHS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def summarize_path(path_data):
+    nodes = path_data.get("nodes", []) if isinstance(path_data, dict) else []
+    total = len(nodes)
+    mastered = sum(1 for n in nodes if (n.get("status") or "") == "mastered")
+    learning = sum(1 for n in nodes if (n.get("status") or "") == "learning")
+    not_started = sum(1 for n in nodes if (n.get("status") or "") == "notStarted")
+    progress = round((mastered / total) * 100, 1) if total else 0.0
+    return {
+        "total_nodes": total,
+        "mastered_nodes": mastered,
+        "learning_nodes": learning,
+        "not_started_nodes": not_started,
+        "progress_percent": progress
+    }
+
+
+def extract_json_from_text(text):
+    if not text:
+        return None
+    cleaned = text.strip()
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        pass
+    match = re.search(r"\{[\s\S]*\}", cleaned)
+    if not match:
+        return None
+    snippet = match.group(0)
+    try:
+        return json.loads(snippet)
+    except Exception:
+        return None
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -139,6 +194,163 @@ def chat_stream():
     if not query:
         return jsonify({"error": "Query is empty"}), 400
     return Response(stream_with_context(stream_llm(query)), mimetype='text/event-stream')
+
+
+@app.route('/generate_path', methods=['POST'])
+def generate_path():
+    data = request.json or {}
+    description = (data.get("description") or "").strip()
+    if not description:
+        return jsonify({"error": "description is required"}), 400
+
+    system_prompt = """
+你是学习路径规划器。你必须严格只输出 JSON，不要输出解释文字，不要 Markdown。
+输出结构必须是：
+{
+  "title": "路径名称",
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "节点名",
+      "type": "prerequisite|core|advanced|optional",
+      "status": "notStarted|learning|mastered",
+      "needsAssessment": true,
+      "description": "说明30字内"
+    }
+  ],
+  "edges": [{"from":"n1","to":"n2"}]
+}
+要求：
+1. 节点数量 4-10 个，id 必须唯一，按 n1,n2... 编号；
+2. edges 只允许引用已存在 id；
+3. description 不超过 30 字；
+4. 返回可被 json.loads 直接解析；
+5. 不要输出除 JSON 以外任何内容。
+"""
+    user_prompt = f"用户目标/状态：{description}"
+    response = agent.llm.invoke(f"{system_prompt}\n\n{user_prompt}")
+    content = response.content if hasattr(response, "content") else str(response)
+    parsed = extract_json_from_text(content)
+    if not isinstance(parsed, dict):
+        return jsonify({"error": "model_output_not_json", "raw": content}), 500
+    if not isinstance(parsed.get("nodes"), list):
+        return jsonify({"error": "invalid_nodes", "raw": content}), 500
+    if not isinstance(parsed.get("edges"), list):
+        parsed["edges"] = []
+    if not parsed.get("title"):
+        parsed["title"] = "AI 生成学习路径"
+    return jsonify(parsed)
+
+
+@app.route('/save_path', methods=['POST'])
+def save_path():
+    data = request.json or {}
+    store = load_paths_data()
+    paths = store["paths"]
+    path_id = (data.get("path_id") or "").strip()
+    append_node = data.get("append_node")
+
+    if append_node and path_id:
+        path_data = paths.get(path_id)
+        if not isinstance(path_data, dict):
+            return jsonify({"error": "path_id not found"}), 404
+        nodes = path_data.get("nodes", [])
+        if not isinstance(nodes, list):
+            nodes = []
+        new_node = {
+            "id": append_node.get("id") or f"n{len(nodes) + 1}",
+            "label": append_node.get("label") or "新增节点",
+            "type": append_node.get("type") or "optional",
+            "status": append_node.get("status") or "notStarted",
+            "needsAssessment": bool(append_node.get("needsAssessment", False)),
+            "description": append_node.get("description") or ""
+        }
+        node_ids = {n.get("id") for n in nodes if isinstance(n, dict)}
+        if new_node["id"] in node_ids:
+            new_node["id"] = f"n{len(nodes) + 1}"
+        nodes.append(new_node)
+        path_data["nodes"] = nodes
+        path_data.setdefault("edges", [])
+        path_data["updated_at"] = int(time.time())
+        paths[path_id] = path_data
+        save_paths_data(store)
+        return jsonify({"status": "success", "path_id": path_id, "summary": summarize_path(path_data)})
+
+    title = (data.get("title") or "").strip()
+    nodes = data.get("nodes")
+    edges = data.get("edges")
+
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return jsonify({"error": "title, nodes, edges are required"}), 400
+
+    if path_id and path_id in paths:
+        target_id = path_id
+    else:
+        target_id = f"path_{int(time.time()*1000)}"
+
+    paths[target_id] = {
+        "title": title or "未命名学习路径",
+        "nodes": nodes,
+        "edges": edges,
+        "created_at": paths.get(target_id, {}).get("created_at", int(time.time())),
+        "updated_at": int(time.time())
+    }
+    store["paths"] = paths
+    save_paths_data(store)
+    return jsonify({"status": "success", "path_id": target_id, "summary": summarize_path(paths[target_id])})
+
+
+@app.route('/get_paths', methods=['GET'])
+def get_paths():
+    store = load_paths_data()
+    result = []
+    for path_id, path_data in store.get("paths", {}).items():
+        if not isinstance(path_data, dict):
+            continue
+        summary = summarize_path(path_data)
+        result.append({
+            "id": path_id,
+            "title": path_data.get("title", "未命名学习路径"),
+            **summary
+        })
+    result.sort(key=lambda x: x["id"], reverse=True)
+    return jsonify({"paths": result})
+
+
+@app.route('/get_path/<path_id>', methods=['GET'])
+def get_path(path_id):
+    store = load_paths_data()
+    path_data = store.get("paths", {}).get(path_id)
+    if not isinstance(path_data, dict):
+        return jsonify({"error": "path_id not found"}), 404
+    return jsonify({"id": path_id, **path_data, "summary": summarize_path(path_data)})
+
+
+@app.route('/update_node_status', methods=['POST'])
+def update_node_status():
+    data = request.json or {}
+    path_id = (data.get("path_id") or "").strip()
+    node_id = (data.get("node_id") or "").strip()
+    new_status = (data.get("new_status") or "").strip()
+    valid_status = {"notStarted", "learning", "mastered"}
+    if not path_id or not node_id or new_status not in valid_status:
+        return jsonify({"error": "path_id, node_id, new_status are required"}), 400
+    store = load_paths_data()
+    path_data = store.get("paths", {}).get(path_id)
+    if not isinstance(path_data, dict):
+        return jsonify({"error": "path_id not found"}), 404
+    found = False
+    for node in path_data.get("nodes", []):
+        if isinstance(node, dict) and node.get("id") == node_id:
+            node["status"] = new_status
+            found = True
+            break
+    if not found:
+        return jsonify({"error": "node_id not found"}), 404
+    path_data["updated_at"] = int(time.time())
+    store["paths"][path_id] = path_data
+    save_paths_data(store)
+    return jsonify({"status": "success", "path_id": path_id, "summary": summarize_path(path_data)})
 
 @app.route('/search_eval', methods=['GET'])
 def search_eval():
@@ -314,6 +526,11 @@ def skill_complete():
 @app.route('/tracker')
 def tracker():
     return render_template('index.html')
+
+@app.route('/consult')
+def consult():
+    path_id = (request.args.get("path_id") or "").strip()
+    return render_template('consult.html', path_id=path_id)
 
 @app.route('/landing')
 def landing():

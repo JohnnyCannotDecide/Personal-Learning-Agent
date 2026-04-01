@@ -9,5 +9,16 @@
       "final": 22.0
     },
     "attempts": 1
+  },
+  "rag_agent_prototype": {
+    "confidence": 30.0,
+    "status": "learning",
+    "last_assessed_at": "2026-04-01T18:23:56",
+    "last_scores": {
+      "rule": 75,
+      "llm": 0,
+      "final": 30.0
+    },
+    "attempts": 1
   }
 }
