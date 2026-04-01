@@ -1,0 +1,200 @@
+{
+  "track_id": "agent_learning_v1",
+  "name": "Agent 学习路线",
+  "retrieval_eval_cases": [
+    {
+      "query": "我该怎么定位Agent方向的职业目标？",
+      "expected_title": "市场锚定"
+    },
+    {
+      "query": "我需要补强简历表达能力，应该回顾什么？",
+      "expected_title": "简历分析"
+    },
+    {
+      "query": "怎么理解多轮对话的上下文管理？",
+      "expected_title": "接口实战"
+    },
+    {
+      "query": "LangGraph 的核心编排思想是什么？",
+      "expected_title": "架构初探"
+    },
+    {
+      "query": "RAG 怎么降低模型胡说八道？",
+      "expected_title": "数据增强"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "llm_api",
+      "label": "LLM API 调用",
+      "x": 100,
+      "y": 300,
+      "link": "/tracker",
+      "criteria": "能够稳定调用主流大模型 API，并完成基础参数配置与错误处理。",
+      "keywords": [
+        "llm",
+        "api",
+        "调用",
+        "openrouter",
+        "模型接口"
+      ],
+      "prerequisites": [],
+      "module": "咨询"
+    },
+    {
+      "id": "multi_turn",
+      "label": "多轮对话",
+      "x": 300,
+      "y": 300,
+      "criteria": "可以维护多轮上下文，让连续追问下的回答保持一致性。",
+      "keywords": [
+        "多轮对话",
+        "上下文",
+        "history",
+        "chat"
+      ],
+      "prerequisites": [
+        "llm_api"
+      ],
+      "module": "咨询"
+    },
+    {
+      "id": "function_calling",
+      "label": "Function Calling",
+      "x": 500,
+      "y": 300,
+      "criteria": "能够按 schema 调用工具并处理参数校验与异常回退。",
+      "keywords": [
+        "function calling",
+        "工具调用",
+        "schema",
+        "参数校验"
+      ],
+      "prerequisites": [
+        "multi_turn"
+      ],
+      "module": "咨询"
+    },
+    {
+      "id": "langgraph",
+      "label": "LangGraph 编排",
+      "x": 700,
+      "y": 200,
+      "criteria": "可以设计状态流并解释每个节点职责。",
+      "keywords": [
+        "langgraph",
+        "状态机",
+        "编排",
+        "节点"
+      ],
+      "prerequisites": [
+        "function_calling"
+      ],
+      "module": "建议"
+    },
+    {
+      "id": "rag",
+      "label": "RAG 检索",
+      "x": 700,
+      "y": 400,
+      "criteria": "能完成检索、重排和生成的基础链路并验证效果。",
+      "keywords": [
+        "rag",
+        "检索",
+        "重排",
+        "向量",
+        "bm25"
+      ],
+      "prerequisites": [
+        "function_calling"
+      ],
+      "module": "建议"
+    },
+    {
+      "id": "rag_agent_prototype",
+      "label": "RAG Agent 原型",
+      "x": 950,
+      "y": 300,
+      "link": "/tracker",
+      "criteria": "已打通学习记录 + 检索 + 问答的可运行原型，并能持续迭代。",
+      "keywords": [
+        "原型",
+        "rag agent",
+        "闭环",
+        "tracker"
+      ],
+      "prerequisites": [
+        "langgraph",
+        "rag"
+      ],
+      "module": "评估"
+    },
+    {
+      "id": "graphrag",
+      "label": "GraphRAG",
+      "x": 1200,
+      "y": 150,
+      "criteria": "可基于实体关系进行可解释检索。",
+      "keywords": [
+        "graphrag",
+        "知识图谱",
+        "关系检索"
+      ],
+      "prerequisites": [
+        "rag_agent_prototype"
+      ],
+      "module": "评估"
+    },
+    {
+      "id": "fastapi_deploy",
+      "label": "FastAPI 部署",
+      "x": 1200,
+      "y": 300,
+      "criteria": "可把 Agent 封装成稳定 API 服务并部署。",
+      "keywords": [
+        "fastapi",
+        "部署",
+        "服务化",
+        "接口"
+      ],
+      "prerequisites": [
+        "rag_agent_prototype"
+      ],
+      "module": "评估"
+    }
+  ],
+  "edges": [
+    {
+      "from": "llm_api",
+      "to": "multi_turn"
+    },
+    {
+      "from": "multi_turn",
+      "to": "function_calling"
+    },
+    {
+      "from": "function_calling",
+      "to": "langgraph"
+    },
+    {
+      "from": "function_calling",
+      "to": "rag"
+    },
+    {
+      "from": "langgraph",
+      "to": "rag_agent_prototype"
+    },
+    {
+      "from": "rag",
+      "to": "rag_agent_prototype"
+    },
+    {
+      "from": "rag_agent_prototype",
+      "to": "graphrag"
+    },
+    {
+      "from": "rag_agent_prototype",
+      "to": "fastapi_deploy"
+    }
+  ]
+}

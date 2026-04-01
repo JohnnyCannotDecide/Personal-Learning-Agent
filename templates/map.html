@@ -6,62 +6,72 @@
     <title>Agent学习地图</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
-        
-        /* 技能树容器 */
+        :root {
+            --bg-primary: #FAFAFA;
+            --bg-card: #FFFFFF;
+            --text-primary: #1A1A2E;
+            --text-secondary: #6B7280;
+            --brand-color: #3B82F6;
+            --brand-color-dark: #1D4ED8;
+            --brand-color-light: #EFF6FF;
+            --brand-color-mid: #BFDBFE;
+            --accent-yellow: #FBBF24;
+            --accent-yellow-light: #FEF9C3;
+            --border-color: #E5E7EB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            line-height: 1.6;
+        }
         #tree-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
         #tree-container:active { cursor: grabbing; }
-
-        /* 节点基础样式 */
         .node {
             position: absolute;
-            width: 140px;
-            height: 50px;
+            width: 148px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
-            font-size: 0.85rem;
+            border-radius: 16px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease-in-out;
             z-index: 10;
             text-align: center;
-            padding: 8px;
-            border: 2px solid transparent;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in-up .45s ease-in-out forwards;
+            color: var(--text-primary);
         }
-
-        /* 状态 1: 已完成 Completed (亮绿色) */
+        .node:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+        }
         .completed {
-            background-color: #064e3b;
-            color: #10b981;
-            border-color: #059669;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+            background: linear-gradient(135deg, #ecebff, #f3f4f6);
+            color: var(--brand-color);
+            border-color: #bdb8ff;
         }
-        .completed:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
-
-        /* 状态 2: 激活中 Active (发光蓝色) */
         .active {
-            background-color: #1e3a8a;
-            color: #60a5fa;
-            border-color: #3b82f6;
-            animation: pulse-blue 2s infinite;
+            background: linear-gradient(135deg, #f3f1ff, #ffffff);
+            color: var(--brand-color);
+            border-color: var(--brand-color);
         }
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
-            100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-        }
-
-        /* 状态 3: 锁定 Locked (灰色) */
         .locked {
-            background-color: #1e293b;
-            color: #64748b;
-            border-color: #334155;
+            background: #f5f5f5;
+            color: #9ca3af;
+            border-color: var(--border-color);
             cursor: not-allowed;
         }
-
-        /* SVG 连线样式 */
         #svg-layer {
             position: absolute;
             top: 0;
@@ -73,22 +83,319 @@
         }
         .line {
             fill: none;
-            stroke: #334155;
-            stroke-width: 2;
-            stroke-dasharray: 5;
-            animation: dash 20s linear infinite;
+            stroke: #d1d5db;
+            stroke-width: 1.6;
+            stroke-dasharray: 0;
+            opacity: .95;
         }
-        .line-completed { stroke: #059669; stroke-width: 3; stroke-dasharray: none; opacity: 0.6; }
-        
-        @keyframes dash { to { stroke-dashoffset: -1000; } }
-
+        .line-completed {
+            stroke: var(--brand-color);
+            stroke-width: 2;
+            opacity: .95;
+            filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.25));
+        }
         .header-title {
             position: fixed;
-            top: 2rem;
+            top: 32px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+            color: var(--text-primary) !important;
+            font-size: 48px !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.5px !important;
+            text-shadow: none;
+            opacity: 0;
+            animation: fade-in-up .45s ease-in-out .05s forwards;
+        }
+        #detail-backdrop {
+            background: rgba(15, 23, 42, 0.18) !important;
+            backdrop-filter: blur(2px);
+        }
+        #detail-panel {
+            background: #ffffff !important;
+            border-left: 1px solid var(--border-color) !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+            border-top-left-radius: 16px;
+            border-bottom-left-radius: 16px;
+        }
+        #detail-title {
+            font-size: 24px !important;
+            font-weight: 600 !important;
+            color: var(--text-primary) !important;
+        }
+        #detail-status {
+            color: var(--text-secondary) !important;
+            background: #f3f4f6 !important;
+            border: 1px solid var(--border-color);
+        }
+        #detail-criteria {
+            font-size: 16px !important;
+            color: var(--text-primary) !important;
+            line-height: 1.6 !important;
+        }
+        #close-detail-btn {
+            color: var(--text-secondary) !important;
+            transition: all 0.3s ease-in-out;
+        }
+        #close-detail-btn:hover { color: var(--text-primary) !important; }
+        #detail-panel .text-sm {
+            color: var(--text-secondary) !important;
+            font-size: 14px !important;
+        }
+        #detail-panel button {
+            border-radius: 12px !important;
+            transition: all 0.25s ease-in-out !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid transparent;
+            padding: 10px 20px !important;
+            font-weight: 500 !important;
+        }
+        #detail-panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+        }
+        #detail-panel button:active { transform: translateY(0); box-shadow: none; }
+        #enter-detail-btn,
+        #advice-btn,
+        #start-eval-btn {
+            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
+            color: #fff !important;
+        }
+        #regen-advice-btn {
+            background: #f3f4f6 !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+            box-shadow: none !important;
+        }
+        #advice-result {
+            background: #fff !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        #eval-overlay {
+            background: rgba(250, 250, 250, 0.9) !important;
+            backdrop-filter: blur(4px);
+        }
+        #eval-overlay > div {
+            width: min(980px, 94vw);
+            margin: 24px auto;
+            height: calc(100vh - 48px);
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in-up .45s ease-in-out forwards;
+        }
+        #eval-overlay > div > div:first-child {
+            border-bottom: 1px solid var(--border-color) !important;
+            background: #fff !important;
+            position: relative;
+            padding-top: 20px !important;
+        }
+        #eval-overlay > div > div:first-child::before {
+            content: "";
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            top: 8px;
+            height: 10px;
+            border-radius: 9999px;
+            background: #eceff4;
+        }
+        #eval-overlay > div > div:first-child::after {
+            content: "";
+            position: absolute;
+            left: 24px;
+            top: 8px;
+            width: 48%;
+            height: 10px;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, var(--brand-color), #5a53e5);
+        }
+        #eval-title {
+            font-size: 32px !important;
+            font-weight: 600 !important;
+            color: var(--brand-color) !important;
+        }
+        #exit-eval-btn {
+            background: #f3f4f6 !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color);
+            border-radius: 16px !important;
+            transition: all 0.3s ease-in-out !important;
+        }
+        #exit-eval-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
+        #eval-chat {
+            background: #fafafa !important;
+            padding: 24px !important;
+        }
+        #eval-chat > div {
+            border-radius: 16px !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+            border: 1px solid var(--border-color) !important;
+            transition: all 0.3s ease-in-out !important;
+            line-height: 1.6 !important;
+            font-size: 16px !important;
+        }
+        #eval-chat > .mr-auto {
+            background: #fff !important;
+            color: var(--text-primary) !important;
+        }
+        #eval-chat > .ml-auto {
+            background: linear-gradient(135deg, #edebff, #f3f4f6) !important;
+            color: var(--text-primary) !important;
+            border-color: #c7c4ff !important;
+        }
+        #eval-overlay .border-t {
+            border-top: 1px solid var(--border-color) !important;
+            background: #fff !important;
+        }
+        #mark-completed-btn {
+            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
+            color: #fff !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: all 0.3s ease-in-out !important;
+        }
+        #mark-completed-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
+        #eval-input {
+            background: #fff !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            color: var(--text-primary) !important;
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+        }
+        #eval-input:focus {
+            border-color: var(--brand-color) !important;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15) !important;
+        }
+        #send-eval-btn {
+            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
+            color: #fff !important;
+            border-radius: 16px !important;
+            transition: all 0.3s ease-in-out !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        #send-eval-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
+        .btn-tier-1 { background: #EFF6FF !important; border-color: #3B82F6 !important; color: #1D4ED8 !important; }
+        .btn-tier-1:hover { background: #DBEAFE !important; }
+        .btn-tier-2 { background: #FEF9C3 !important; border-color: #FBBF24 !important; color: #92400E !important; }
+        .btn-tier-2:hover { background: #FDE68A !important; }
+        .btn-tier-3 { background: #DBEAFE !important; border-color: #93C5FD !important; color: #1E40AF !important; }
+        .btn-tier-3:hover { background: #BFDBFE !important; }
+        .btn-tier-4 { background: #FFF7ED !important; border-color: #FCD34D !important; color: #B45309 !important; }
+        .btn-tier-4:hover { background: #FFEDD5 !important; }
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]::before,
+        [data-tooltip]::after {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1200;
+        }
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            background: #1A1A2E;
+            color: #FFFFFF;
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 6px 12px;
+            white-space: nowrap;
+            left: 50%;
+            transform: translate(-50%, 4px);
+            bottom: calc(100% + 10px);
+        }
+        [data-tooltip]::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #1A1A2E;
+            left: 50%;
+            transform: translate(-50%, 4px);
+            bottom: calc(100% + 4px);
+        }
+        [data-tooltip][data-tooltip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 10px);
+            transform: translate(-50%, -4px);
+        }
+        [data-tooltip][data-tooltip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 4px);
+            border-top: none;
+            border-bottom: 6px solid #1A1A2E;
+            transform: translate(-50%, -4px);
+        }
+        [data-tooltip].tooltip-visible::before,
+        [data-tooltip].tooltip-visible::after {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        .stream-skeleton {
+            height: 20px;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, #dbeafe, #bfdbfe, #dbeafe);
+            background-size: 220% 100%;
+            animation: skeleton-move 1.2s linear infinite;
+        }
+        .stream-cursor {
+            display: inline-block;
+            width: 1px;
+            height: 1.1em;
+            background: var(--brand-color);
+            margin-left: 3px;
+            vertical-align: text-bottom;
+            animation: cursor-blink 1s infinite;
+        }
+        .stream-actions {
+            margin-top: 8px;
+            display: none;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .stream-actions.show { display: flex; }
+        .stream-mini-btn {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 13px;
+            background: #fff;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+        }
+        .stream-mini-btn:hover {
+            background: var(--brand-color-light);
+            color: var(--brand-color-dark);
+            border-color: var(--brand-color-mid);
+        }
+        @keyframes skeleton-move {
+            from { background-position: 100% 0; }
+            to { background-position: -100% 0; }
+        }
+        @keyframes cursor-blink {
+            0%, 45% { opacity: 1; }
+            55%, 100% { opacity: 0; }
+        }
+        .eval-option { background: #F3F4F6; border: 1px solid var(--border-color); border-radius: 16px; }
+        .eval-option.selected { background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; }
+        .eval-option.correct { background: #D1FAE5; border-color: #10b981; color: #065f46; }
+        .eval-option.wrong { background: #FEE2E2; border-color: #ef4444; color: #991b1b; }
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -159,52 +466,8 @@
     </div>
 
     <script>
-        // 1. 硬编码初始数据
-        const nodes = [
-            // 基础层
-            { id: 'llm', label: 'LLM API 调用', status: 'completed', x: 100, y: 300 },
-            { id: 'chat', label: '多轮对话', status: 'completed', x: 300, y: 300 },
-            { id: 'func', label: 'Function Calling', status: 'completed', x: 500, y: 300 },
-            
-            // 进阶层
-            { id: 'lang', label: 'LangGraph 编排', status: 'completed', x: 700, y: 200 },
-            { id: 'rag', label: 'RAG 检索', status: 'completed', x: 700, y: 400 },
-            
-            // 当前核心节点 (点击跳转)
-            { id: 'agent', label: 'RAG Agent 原型', status: 'active', x: 950, y: 300, link: '/tracker' },
-            
-            // 未来扩展
-            { id: 'graph', label: 'GraphRAG', status: 'locked', x: 1200, y: 150 },
-            { id: 'deploy', label: 'FastAPI 部署', status: 'locked', x: 1200, y: 300 },
-            { id: 'edu', label: '教育 Agent', status: 'locked', x: 1450, y: 220 },
-            { id: 'fin', label: '金融 Agent', status: 'locked', x: 1450, y: 380 }
-        ];
-
-        const edges = [
-            { from: 'llm', to: 'chat' },
-            { from: 'chat', to: 'func' },
-            { from: 'func', to: 'lang' },
-            { from: 'func', to: 'rag' },
-            { from: 'lang', to: 'agent' },
-            { from: 'rag', to: 'agent' },
-            { from: 'agent', to: 'graph' },
-            { from: 'agent', to: 'deploy' },
-            { from: 'deploy', to: 'edu' },
-            { from: 'deploy', to: 'fin' }
-        ];
-
-        const completionCriteria = {
-            llm: '能够稳定调用主流大模型 API，并完成基础参数配置与错误处理。能够输出结构化内容并验证响应可用性。',
-            chat: '可以维护多轮上下文，让对话在连续追问下保持主题一致。对历史消息截断策略有明确实现。',
-            func: '能够让模型按约定 schema 调用工具函数，并正确处理参数校验与异常回退。',
-            lang: '可以使用 LangGraph 设计至少一个带分支或循环的执行流，并能解释每个节点职责。',
-            rag: '能完成检索、重排和生成的基本链路，并通过样例问题验证回答相关性明显提升。',
-            agent: '已打通“学习记录 + 检索 + 问答”的可运行原型。可以根据新增记录给出更贴近用户背景的建议。',
-            graph: '能把实体与关系写入图数据库，并基于图结构完成可解释的关联检索。',
-            deploy: '可以把应用用 FastAPI 封装为稳定接口，并完成基础线上部署与日志监控。',
-            edu: '可以围绕教育场景设计端到端任务链路，并通过真实学习任务验证效果。',
-            fin: '可以围绕金融场景设计安全合规的 Agent 工作流，并在风控约束下完成任务闭环。'
-        };
+        let nodes = [];
+        let edges = [];
         const statusTextMap = {
             completed: '已完成',
             active: '进行中',
@@ -236,8 +499,69 @@
         let evalHistory = [];
         let evalPassed = false;
         let adviceLoadToken = 0;
+        let lastAdviceQuery = '';
+        const buttonTierCycle = ['btn-tier-1', 'btn-tier-2', 'btn-tier-3', 'btn-tier-4'];
 
-        // 2. 渲染节点
+        async function loadSkillTree() {
+            const res = await fetch('/skills/tree');
+            const data = await res.json();
+            nodes = data.nodes || [];
+            edges = data.edges || [];
+            svg.innerHTML = '';
+            container.querySelectorAll('.node').forEach((n) => n.remove());
+            renderNodes();
+            renderEdges();
+        }
+
+        function applyButtonTierCycle() {
+            const btns = [
+                enterDetailBtn,
+                adviceBtn,
+                startEvalBtn,
+                regenAdviceBtn,
+                exitEvalBtn,
+                markCompletedBtn,
+                sendEvalBtn
+            ].filter(Boolean);
+            btns.forEach((btn, idx) => {
+                buttonTierCycle.forEach((tier) => btn.classList.remove(tier));
+                btn.classList.add(buttonTierCycle[idx % buttonTierCycle.length]);
+            });
+        }
+
+        function initTooltips() {
+            const tooltipText = new Map([
+                [closeDetailBtn, '关闭当前面板'],
+                [enterDetailBtn, '进入节点详情'],
+                [adviceBtn, '生成学习建议'],
+                [startEvalBtn, '开启能力评估'],
+                [regenAdviceBtn, '刷新建议内容'],
+                [exitEvalBtn, '退出评估模式'],
+                [sendEvalBtn, '提交本轮回答'],
+                [markCompletedBtn, '将节点标记完成']
+            ]);
+            tooltipText.forEach((text, el) => {
+                if (!el) return;
+                el.setAttribute('data-tooltip', text);
+                let timer = null;
+                const show = () => {
+                    const rect = el.getBoundingClientRect();
+                    const nearTop = rect.top < 64;
+                    const nearRight = rect.right > window.innerWidth - 20;
+                    const nearLeft = rect.left < 20;
+                    el.setAttribute('data-tooltip-pos', nearTop || nearRight || nearLeft ? 'bottom' : 'top');
+                    timer = setTimeout(() => el.classList.add('tooltip-visible'), 300);
+                };
+                const hide = () => {
+                    clearTimeout(timer);
+                    el.classList.remove('tooltip-visible');
+                };
+                el.addEventListener('mouseenter', show);
+                el.addEventListener('mouseleave', hide);
+                el.addEventListener('blur', hide);
+            });
+        }
+
         function renderNodes() {
             nodes.forEach(node => {
                 const div = document.createElement('div');
@@ -255,7 +579,6 @@
             });
         }
 
-        // 3. 渲染 SVG 连线
         function renderEdges() {
             edges.forEach(edge => {
                 const fromNode = nodes.find(n => n.id === edge.from);
@@ -281,9 +604,6 @@
             });
         }
 
-        renderNodes();
-        renderEdges();
-
         function setStatusBadge(status) {
             detailStatus.className = 'text-xs px-2 py-1 rounded-full';
             if (status === 'completed') {
@@ -300,7 +620,7 @@
             currentNode = node;
             detailTitle.innerText = node.label;
             setStatusBadge(node.status);
-            detailCriteria.innerText = completionCriteria[node.id] || '该节点暂无完成标准描述。';
+            detailCriteria.innerText = node.criteria || '该节点暂无完成标准描述。';
             adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
             regenAdviceBtn.classList.add('hidden');
             adviceBtn.disabled = false;
@@ -336,21 +656,83 @@
 
         async function generateAndSaveAdvice() {
             if (!currentNode) return;
-            adviceResult.innerText = '正在生成建议，请稍候...';
-            const query = `我想攻克${currentNode.label}这个节点，根据我的学习记录给我具体建议`;
-            const res = await fetch('/chat', {
+            const query = `请基于我的学习记录，围绕“${currentNode.label}”给出3条可执行建议，并附一个自测题。`;
+            lastAdviceQuery = query;
+            adviceBtn.disabled = true;
+            adviceBtn.innerText = '生成中...';
+            adviceResult.innerHTML = `
+                <div class="stream-skeleton"></div>
+                <span class="stream-text"></span><span class="stream-cursor"></span>
+                <div class="stream-actions">
+                    <button class="stream-mini-btn" id="copy-advice-btn">复制</button>
+                    <button class="stream-mini-btn" id="regen-advice-inline-btn">重新生成</button>
+                </div>
+            `;
+            const streamText = adviceResult.querySelector('.stream-text');
+            const streamSkeleton = adviceResult.querySelector('.stream-skeleton');
+            const streamCursor = adviceResult.querySelector('.stream-cursor');
+            const streamActions = adviceResult.querySelector('.stream-actions');
+            const res = await fetch('/chat_stream', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({query})
             });
-            const data = await res.json();
-            const advice = data.response || '未返回建议内容，请稍后重试。';
-            adviceResult.innerText = advice;
+            if (!res.ok || !res.body) {
+                adviceResult.innerText = '请求失败，请检查服务状态后重试。';
+                adviceBtn.disabled = false;
+                adviceBtn.innerText = '获取学习建议';
+                return;
+            }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let fullText = '';
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const events = buffer.split('\n\n');
+                buffer = events.pop() || '';
+                for (const evt of events) {
+                    const lines = evt.split('\n');
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+                        if (streamSkeleton && streamSkeleton.style.display !== 'none') {
+                            streamSkeleton.style.display = 'none';
+                        }
+                        fullText += data;
+                        if (streamText) streamText.textContent = fullText;
+                        adviceResult.scrollTop = adviceResult.scrollHeight;
+                    }
+                }
+            }
+            if (streamCursor) streamCursor.style.display = 'none';
+            if (streamActions) streamActions.classList.add('show');
+            const copyBtn = document.getElementById('copy-advice-btn');
+            const regenInlineBtn = document.getElementById('regen-advice-inline-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(fullText);
+                        copyBtn.textContent = '已复制';
+                        setTimeout(() => copyBtn.textContent = '复制', 1200);
+                    } catch (_) {}
+                });
+            }
+            if (regenInlineBtn) {
+                regenInlineBtn.addEventListener('click', async () => {
+                    await generateAndSaveAdvice();
+                });
+            }
             await fetch('/save_advice', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({node_name: currentNode.label, advice})
+                body: JSON.stringify({node_id: currentNode.id, advice: fullText})
             });
+            adviceBtn.disabled = false;
+            adviceBtn.innerText = '获取学习建议';
             regenAdviceBtn.classList.remove('hidden');
         }
 
@@ -360,7 +742,7 @@
             adviceBtn.innerText = '获取中...';
             try {
                 if (!forceRegenerate) {
-                    const cachedRes = await fetch(`/get_advice?node=${encodeURIComponent(currentNode.label)}`);
+                    const cachedRes = await fetch(`/get_advice?node_id=${encodeURIComponent(currentNode.id)}`);
                     const cachedData = await cachedRes.json();
                     if (cachedData.found && cachedData.advice) {
                         adviceResult.innerText = cachedData.advice;
@@ -372,14 +754,16 @@
             } catch (error) {
                 adviceResult.innerText = '请求失败，请检查服务状态后重试。';
             } finally {
-                adviceBtn.disabled = false;
-                adviceBtn.innerText = '获取学习建议';
+                if (!adviceBtn.disabled) {
+                    adviceBtn.disabled = false;
+                    adviceBtn.innerText = '获取学习建议';
+                }
             }
         }
 
         async function loadSavedAdviceOnOpen(node, token) {
             try {
-                const cachedRes = await fetch(`/get_advice?node=${encodeURIComponent(node.label)}`);
+                const cachedRes = await fetch(`/get_advice?node_id=${encodeURIComponent(node.id)}`);
                 const cachedData = await cachedRes.json();
                 if (token !== adviceLoadToken || !currentNode || currentNode.id !== node.id) return;
                 if (cachedData.found && cachedData.advice) {
@@ -401,9 +785,29 @@
             div.className = role === 'assistant'
                 ? 'max-w-[80%] mr-auto bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm leading-relaxed'
                 : 'max-w-[80%] ml-auto bg-violet-900/60 border border-violet-700 rounded-lg p-3 text-sm leading-relaxed';
-            div.innerText = text;
+            div.textContent = text;
             evalChat.appendChild(div);
             evalChat.scrollTop = evalChat.scrollHeight;
+            return div;
+        }
+
+        async function streamTextToElement(el, text) {
+            el.innerHTML = `<div class="stream-skeleton"></div><span class="stream-cursor"></span>`;
+            const skeleton = el.querySelector('.stream-skeleton');
+            const cursor = el.querySelector('.stream-cursor');
+            const content = document.createElement('span');
+            content.style.whiteSpace = 'pre-wrap';
+            content.style.wordBreak = 'break-word';
+            el.prepend(content);
+            for (const ch of text) {
+                if (skeleton && skeleton.style.display !== 'none') {
+                    skeleton.style.display = 'none';
+                }
+                content.textContent += ch;
+                evalChat.scrollTop = evalChat.scrollHeight;
+                await new Promise((resolve) => setTimeout(resolve, 8));
+            }
+            if (cursor) cursor.style.display = 'none';
         }
 
         function closeEvalOverlay() {
@@ -419,7 +823,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        node_name: currentNode.label,
+                        node_id: currentNode.id,
                         history: evalHistory,
                         user_answer: userAnswer
                     })
@@ -427,7 +831,8 @@
                 const data = await res.json();
                 const reply = data.response || '评估服务暂无返回，请稍后重试。';
                 evalHistory.push({ role: 'assistant', content: reply });
-                appendEvalMessage('assistant', reply);
+                const bubble = appendEvalMessage('assistant', '');
+                await streamTextToElement(bubble, reply);
                 evalPassed = !!data.passed;
                 if (evalPassed) {
                     markCompletedBtn.classList.remove('hidden');
@@ -468,16 +873,25 @@
 
         function markCurrentNodeCompleted() {
             if (!currentNode) return;
-            currentNode.status = 'completed';
-            const nodeDiv = document.getElementById(currentNode.id);
-            if (nodeDiv) {
-                nodeDiv.classList.remove('active', 'locked');
-                nodeDiv.classList.add('completed');
-            }
-            setStatusBadge(currentNode.status);
-            svg.innerHTML = '';
-            renderEdges();
-            closeEvalOverlay();
+            fetch('/skills/complete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({node_id: currentNode.id})
+            }).then(async (res) => {
+                if (!res.ok) {
+                    appendEvalMessage('assistant', '标记失败，请稍后重试。');
+                    return;
+                }
+                await loadSkillTree();
+                const refreshed = nodes.find(n => n.id === currentNode.id);
+                if (refreshed) {
+                    currentNode = refreshed;
+                    setStatusBadge(currentNode.status);
+                }
+                closeEvalOverlay();
+            }).catch(() => {
+                appendEvalMessage('assistant', '标记失败，请检查服务状态后重试。');
+            });
         }
 
         detailBackdrop.addEventListener('click', closeDetailPanel);
@@ -514,9 +928,11 @@
             isDragging = true;
             startX = e.pageX;
             startY = e.pageY;
-            // 简单模拟平移（由于是绝对定位，实际开发建议用 transform）
         });
         window.addEventListener('mouseup', () => isDragging = false);
+        applyButtonTierCycle();
+        initTooltips();
+        loadSkillTree();
     </script>
 </body>
 </html>

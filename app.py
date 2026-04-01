@@ -42,6 +42,20 @@ def build_prompt_from_query(query, top_k=3):
 2. 如果信息不足，可以补充
 """
 
+
+def resolve_node(node_name, node_id):
+    tree = agent.get_skill_tree_view()
+    if node_id:
+        for node in tree.get("nodes", []):
+            if node.get("id") == node_id:
+                return node
+    if node_name:
+        lower_name = node_name.lower()
+        for node in tree.get("nodes", []):
+            if (node.get("label") or "").lower() == lower_name:
+                return node
+    return None
+
 def stream_llm(query):
     if not openrouter_api_key:
         yield "data: 系统错误：未配置 OPENROUTER_API_KEY，请先在 .env 配置有效密钥。\n\n"
@@ -50,7 +64,7 @@ def stream_llm(query):
     prompt = build_prompt_from_query(query)
     try:
         stream = openai_client.chat.completions.create(
-            model="google/gemma-3-12b-it:free",
+            model="qwen/qwen3.6-plus-preview:free",
             messages=[{"role": "user", "content": prompt}],
             stream=True
         )
@@ -137,85 +151,56 @@ def evaluate():
     try:
         data = request.json or {}
         node_name = (data.get('node_name') or '').strip()
+        node_id = (data.get('node_id') or '').strip()
         history = data.get('history') or []
         user_answer = (data.get('user_answer') or '').strip()
-        if not node_name:
-            return jsonify({"error": "node_name is required"}), 400
-
-        context_records = agent.search(f"{node_name} 学习记录 评估", top_k=5)
-        if context_records:
-            context = "\n".join([f"[{r['date']}] {r['title']} - {r['content']}" for r in context_records])
-        else:
-            context = "无相关学习记录"
-
-        history_lines = []
-        if isinstance(history, list):
-            for item in history:
-                role = (item.get('role') or '').strip()
-                content = (item.get('content') or '').strip()
-                if role and content:
-                    history_lines.append(f"{role}: {content}")
-        history_text = "\n".join(history_lines) if history_lines else "（无）"
-        answer_text = user_answer if user_answer else "（首轮，请直接出一道该技术的核心概念题）"
-
-        prompt = f"""
-    你是一个严格但友善的技术面试官，正在评估用户对"{node_name}"的掌握程度。 
-    规则： 
-    1. 第一次调用时，出一道该技术的核心概念题，不要太简单 
-    2. 根据用户回答决定：回答到位就追问更深，回答不全就指出缺失并继续追问 
-    3. 经过2-4轮对话后，给出评估结论 
-    4. 结论必须包含这个标记之一：[建议继续学习] 或 [基本掌握] 
-    5. 说话简洁，像真实面试官，不要啰嗦 
-    你的提问必须严格限定在{node_name}这个知识点本身，不要延伸到其他模块或生产级工程化细节，评估目标是概念理解和基本实践能力。
-
-    学习记录参考：
-    {context}
-
-    已有对话历史：
-    {history_text}
-
-    用户本轮回答：
-    {answer_text}
-
-    请直接输出你这一轮要说的话，不要输出多余说明。
-    """
-        response = agent.llm.invoke(prompt)
-        model_reply = response.content if hasattr(response, 'content') else str(response)
-        passed = '[基本掌握]' in model_reply
-        return jsonify({"response": model_reply, "passed": passed})
+        node = resolve_node(node_name, node_id)
+        if not node:
+            return jsonify({"error": "node_name or node_id is invalid"}), 400
+        result = agent.evaluate_node(node_id=node.get("id"), history=history, user_answer=user_answer)
+        return jsonify(result)
     except Exception as e:
         import traceback
-        traceback.print_exc()  # 打印完整堆栈到终端
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     
 @app.route('/save_advice', methods=['POST'])
 def save_advice():
     data = request.json or {}
     node_name = (data.get('node_name') or '').strip()
+    node_id = (data.get('node_id') or '').strip()
     advice = (data.get('advice') or '').strip()
-    if not node_name or not advice:
-        return jsonify({"error": "node_name and advice are required"}), 400
+    if not advice:
+        return jsonify({"error": "advice is required"}), 400
+    node = resolve_node(node_name, node_id)
+    if not node:
+        return jsonify({"error": "node_name or node_id is invalid"}), 400
+    key = node.get("id")
     advice_map = load_advice_map()
-    advice_map[node_name] = advice
+    advice_map[key] = advice
     save_advice_map(advice_map)
     return jsonify({"status": "success"})
 
 @app.route('/get_advice', methods=['GET'])
 def get_advice():
     node_name = (request.args.get('node') or '').strip()
-    if not node_name:
-        return jsonify({"error": "node is required"}), 400
+    node_id = (request.args.get('node_id') or '').strip()
+    node = resolve_node(node_name, node_id)
+    if not node:
+        return jsonify({"error": "node or node_id is required"}), 400
     advice_map = load_advice_map()
-    advice = advice_map.get(node_name, "")
+    advice = advice_map.get(node.get("id"), "")
     return jsonify({"found": bool(advice), "advice": advice})
 
 @app.route('/add', methods=['POST'])
 def add_record():
-    data = request.json
+    data = request.json or {}
+    node_id = (data.get('node_id') or '').strip()
     new_record = {
         "date": data.get('date'),
         "title": data.get('title'),
-        "content": data.get('content')
+        "content": data.get('content'),
+        "skill_id": node_id
     }
     agent.add(new_record)
     return jsonify({"status": "success"})
@@ -239,10 +224,13 @@ def upload_document():
         data = request.json or {}
         title = (data.get('title') or '').strip()
         content = (data.get('content') or '').strip()
+        node_id = (data.get('node_id') or '').strip()
         source = "upload"
+    if request.files and 'file' in request.files:
+        node_id = (request.form.get('node_id') or '').strip()
     if not title or not content:
         return jsonify({"error": "title and content required"}), 400
-    chunk_count = agent.add_document(title, content, source=source)
+    chunk_count = agent.add_document(title, content, source=source, skill_id=node_id or None)
     return jsonify({
         "status": "success",
         "chunks": chunk_count,
@@ -251,37 +239,89 @@ def upload_document():
     
 @app.route('/timeline', methods=['GET'])
 def get_timeline():
-    # 给每一条记录打上原始索引标签，解决排序后的索引错位问题
     data_with_id = []
     for i, item in enumerate(agent.metadata):
         copy_item = item.copy()
         copy_item['original_idx'] = i
         data_with_id.append(copy_item)
-    # 按日期倒序排列
     return jsonify(sorted(data_with_id, key=lambda x: x['date'], reverse=True))
 
 @app.route('/record', methods=['DELETE'])
 def delete_record():
     idx = request.json.get('index')
-    # 注意：前端传来的 index 可能是基于时间轴排序后的，
-    # 建议前端直接传原始 metadata 的索引，或者通过 title/date 匹配。
-    # 这里我们假设传的是原始索引
     if agent.delete(idx):
         return jsonify({"status": "success"})
     return jsonify({"status": "error"}), 400
 
 @app.route('/map')
 def skill_map():
-    # 返回技能树主页面
     return render_template('map.html')
+
+
+@app.route('/skills/tree', methods=['GET'])
+def skill_tree_data():
+    return jsonify(agent.get_skill_tree_view())
+
+
+@app.route('/skills/consult', methods=['POST'])
+def skill_consult():
+    data = request.json or {}
+    query = (data.get('query') or '').strip()
+    node_id = (data.get('node_id') or '').strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    result = agent.consult(query=query, node_id=node_id or None)
+    return jsonify(result)
+
+
+@app.route('/skills/advice', methods=['POST'])
+def skill_advice():
+    data = request.json or {}
+    node_id = (data.get('node_id') or '').strip()
+    if not node_id:
+        return jsonify({"error": "node_id is required"}), 400
+    advice_map = load_advice_map()
+    if not data.get('force_regenerate') and advice_map.get(node_id):
+        return jsonify({"response": advice_map[node_id], "cached": True, "references": []})
+    result = agent.advise(node_id=node_id)
+    advice_map[node_id] = result.get("response", "")
+    save_advice_map(advice_map)
+    result["cached"] = False
+    return jsonify(result)
+
+
+@app.route('/skills/evaluate', methods=['POST'])
+def skill_evaluate():
+    data = request.json or {}
+    node_id = (data.get('node_id') or '').strip()
+    history = data.get('history') or []
+    user_answer = (data.get('user_answer') or '').strip()
+    if not node_id:
+        return jsonify({"error": "node_id is required"}), 400
+    return jsonify(agent.evaluate_node(node_id=node_id, history=history, user_answer=user_answer))
+
+
+@app.route('/skills/complete', methods=['POST'])
+def skill_complete():
+    data = request.json or {}
+    node_id = (data.get('node_id') or '').strip()
+    if not node_id:
+        return jsonify({"error": "node_id is required"}), 400
+    if not agent.mark_skill_completed(node_id):
+        return jsonify({"error": "node_id not found"}), 404
+    return jsonify({"status": "success"})
 
 @app.route('/tracker')
 def tracker():
     return render_template('index.html')
 
+@app.route('/landing')
+def landing():
+    return render_template('landing.html')
+
 @app.route('/')
 def index():
-    return redirect(url_for('skill_map'))
+    return redirect(url_for('landing'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

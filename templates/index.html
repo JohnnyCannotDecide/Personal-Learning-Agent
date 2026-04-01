@@ -3,115 +3,572 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Brain Agent</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Agent 学习工作台</title>
+    <link rel="stylesheet" href="/static/css/design-tokens.css">
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .chat-bubble-ai { background-color: #1e293b; border-left: 4px solid #38bdf8; }
-        .chat-bubble-user { background-color: #334155; border-right: 4px solid #94a3b8; }
-        .system-tip { font-size: 0.75rem; color: #64748b; text-align: center; margin: 10px 0; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        .app-shell {
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1.7fr 1fr;
+            gap: var(--space-16);
+            padding: var(--space-16);
+        }
+        .panel {
+            background: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-light);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform var(--motion-normal) var(--ease-standard), box-shadow var(--motion-normal) var(--ease-standard);
+        }
+        .panel:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-medium);
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-16);
+            border-bottom: 1px solid var(--color-border);
+            background: #ffffffb3;
+            backdrop-filter: blur(6px);
+        }
+        .panel-title {
+            margin: 0;
+            font-size: var(--font-h4);
+            font-weight: 700;
+        }
+        .mini-link {
+            color: var(--color-brand-600);
+            text-decoration: none;
+            font-size: var(--font-caption);
+            font-weight: 600;
+        }
+        .chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-16);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-12);
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
+        }
+        .chat-row {
+            display: flex;
+        }
+        .chat-row.ai { justify-content: flex-start; }
+        .chat-row.user { justify-content: flex-end; }
+        .bubble {
+            max-width: 82%;
+            border-radius: var(--radius-md);
+            padding: var(--space-12);
+            line-height: 1.5;
+            font-size: var(--font-body);
+            box-shadow: var(--shadow-light);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .bubble-ai {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+        .bubble-user {
+            background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-700));
+            color: #fff;
+        }
+        .system-tip {
+            text-align: center;
+            color: var(--color-text-muted);
+            font-size: var(--font-caption);
+            padding: 4px 0;
+        }
+        .composer {
+            border-top: 1px solid var(--color-border);
+            padding: var(--space-16);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-12);
+            background: #fff;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: #fff;
+            padding: 12px;
+            font-size: var(--font-body);
+            outline: none;
+            transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+        }
+        textarea:focus, input[type="text"]:focus {
+            border-color: var(--color-brand-500);
+            box-shadow: 0 0 0 3px #a78bfa3b;
+        }
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-12);
+        }
+        .tiny {
+            font-size: var(--font-caption);
+            color: var(--color-text-muted);
+        }
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: var(--font-body);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .btn-tier-1 { background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; }
+        .btn-tier-1:hover { background: #DBEAFE; }
+        .btn-tier-2 { background: #FEF9C3; border-color: #FBBF24; color: #92400E; }
+        .btn-tier-2:hover { background: #FDE68A; }
+        .btn-tier-3 { background: #DBEAFE; border-color: #93C5FD; color: #1E40AF; }
+        .btn-tier-3:hover { background: #BFDBFE; }
+        .btn-tier-4 { background: #FFF7ED; border-color: #FCD34D; color: #B45309; }
+        .btn-tier-4:hover { background: #FFEDD5; }
+        .upload-box {
+            padding: var(--space-16);
+            border-bottom: 1px solid var(--color-border);
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-8);
+        }
+        .file-input {
+            width: 100%;
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            background: #fff;
+            font-size: var(--font-caption);
+        }
+        .progress-wrap {
+            display: none;
+            margin-top: 8px;
+        }
+        .progress-track {
+            width: 100%;
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: var(--radius-full);
+            background: linear-gradient(90deg, var(--color-brand-500), var(--color-accent));
+            transition: width var(--motion-normal) var(--ease-standard);
+        }
+        .timeline-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-16);
+        }
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+        .timeline::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 8px;
+            width: 2px;
+            background: #d1d5db;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: var(--space-16);
+            padding: 12px 12px 12px 14px;
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-light);
+            transition: transform var(--motion-normal) var(--ease-standard), box-shadow var(--motion-normal) var(--ease-standard), opacity var(--motion-normal) var(--ease-standard);
+        }
+        .timeline-item:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: var(--radius-full);
+            left: -22px;
+            top: 18px;
+            border: 2px solid #fff;
+        }
+        .status-completed::before { background: #22c55e; }
+        .status-progress::before { background: #3b82f6; }
+        .status-pending::before { background: #9ca3af; }
+        .status-tag {
+            display: inline-block;
+            border-radius: var(--radius-full);
+            padding: 2px 10px;
+            font-size: var(--font-caption);
+            margin-bottom: 6px;
+        }
+        .status-completed .status-tag { background: #dcfce7; color: #166534; }
+        .status-progress .status-tag { background: #dbeafe; color: #1e40af; }
+        .status-pending .status-tag { background: #f3f4f6; color: #374151; }
+        .timeline-title {
+            font-size: var(--font-body);
+            font-weight: 700;
+            margin: 4px 0;
+        }
+        .timeline-date {
+            color: var(--color-text-muted);
+            font-size: var(--font-caption);
+        }
+        .timeline-content {
+            color: #374151;
+            font-size: var(--font-body);
+            margin-top: 4px;
+            line-height: 1.55;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 4px 8px;
+            font-size: var(--font-caption);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity var(--motion-fast) var(--ease-standard);
+        }
+        .timeline-item:hover .delete-btn { opacity: 1; }
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp var(--motion-slow) var(--ease-standard) forwards;
+        }
+        .stream-bubble {
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            position: relative;
+            min-height: 56px;
+        }
+        .stream-skeleton {
+            height: 20px;
+            border-radius: var(--radius-full);
+            background: linear-gradient(90deg, #dbeafe, #bfdbfe, #dbeafe);
+            background-size: 220% 100%;
+            animation: skeletonMove 1.2s linear infinite;
+        }
+        .stream-text {
+            display: inline;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .stream-cursor {
+            display: inline-block;
+            width: 1px;
+            height: 1.1em;
+            background: var(--color-brand-500);
+            margin-left: 3px;
+            vertical-align: text-bottom;
+            animation: cursorBlink 1s infinite;
+        }
+        .stream-actions {
+            margin-top: 10px;
+            display: none;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .stream-actions.show { display: flex; }
+        .stream-mini-btn {
+            border: 1px solid var(--color-border);
+            background: #fff;
+            color: var(--color-text-muted);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+        }
+        .stream-mini-btn:hover {
+            color: var(--color-brand-600);
+            border-color: var(--color-brand-200);
+            background: var(--color-brand-light);
+        }
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]::before,
+        [data-tooltip]::after {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1200;
+        }
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            background: #1A1A2E;
+            color: #fff;
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 6px 12px;
+            white-space: nowrap;
+            left: 50%;
+            transform: translate(-50%, 4px);
+            bottom: calc(100% + 10px);
+        }
+        [data-tooltip]::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #1A1A2E;
+            left: 50%;
+            transform: translate(-50%, 4px);
+            bottom: calc(100% + 4px);
+        }
+        [data-tooltip][data-tooltip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 10px);
+            transform: translate(-50%, -4px);
+        }
+        [data-tooltip][data-tooltip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 4px);
+            border-top: none;
+            border-bottom: 6px solid #1A1A2E;
+            transform: translate(-50%, -4px);
+        }
+        [data-tooltip].tooltip-visible::before,
+        [data-tooltip].tooltip-visible::after {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        @keyframes skeletonMove {
+            from { background-position: 100% 0; }
+            to { background-position: -100% 0; }
+        }
+        @keyframes cursorBlink {
+            0%, 45% { opacity: 1; }
+            55%, 100% { opacity: 0; }
+        }
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: #0f172a75;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-16);
+            z-index: 50;
+        }
+        .modal.show { display: flex; }
+        .modal-card {
+            width: min(520px, 100%);
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-heavy);
+            padding: var(--space-24);
+        }
+        .modal-actions {
+            margin-top: var(--space-16);
+            display: flex;
+            gap: var(--space-12);
+        }
+        @media (max-width: 1024px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: 100vh;
+            }
+            .panel { min-height: 72vh; }
+        }
     </style>
 </head>
-<body class="h-screen flex overflow-hidden">
-
-    <div class="w-3/5 flex flex-col border-r border-slate-800">
-        <div class="px-6 pt-4">
-            <a href="/map" class="text-sky-400 hover:text-sky-300 text-sm mb-4 inline-block"> ← 返回成长地图 </a>
-        </div>
-        <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-4">
-            <div class="chat-bubble-ai p-4 rounded-lg shadow">
-                你好！我是你的思维 Agent。我已经准备好记录你的新想法了。
-            </div>
-        </div>
-        
-        <div class="p-4 bg-slate-900 border-t border-slate-800">
-            <div class="flex flex-col gap-2">
-                <textarea id="user-input" 
-                       placeholder="输入问题... (Enter 发送, Shift+Enter 换行)" 
-                       class="w-full bg-slate-800 border-none rounded-lg p-3 focus:ring-2 focus:ring-sky-500 outline-none resize-none"
-                       rows="3"
-                       onkeydown="handleKeyDown(event)"></textarea>
-                <div class="flex justify-between items-center px-1">
-                    <span class="text-xs text-slate-500">按 Enter 发送 / Shift+Enter 换行</span>
-                    <button onclick="sendMessage()" class="bg-sky-600 hover:bg-sky-500 px-6 py-2 rounded-lg transition font-medium">发送</button>
+<body>
+    <main class="app-shell">
+        <section class="panel fade-in" style="animation-delay: .05s">
+            <header class="panel-head">
+                <div>
+                    <h2 class="panel-title">学习对话</h2>
+                    <div class="tiny">记录、追问、总结都在这里完成</div>
+                </div>
+                <a href="/map" class="mini-link">返回成长地图</a>
+            </header>
+            <div id="chat-window" class="chat-window">
+                <div class="chat-row ai">
+                    <div class="bubble bubble-ai">你好！我是你的学习 Agent，今天想先复盘哪个模块？</div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="w-2/5 flex flex-col bg-slate-900/50">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-            <h2 class="text-xl font-bold">学习时间轴</h2>
-            <button onclick="toggleModal()" class="text-sm bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded transition font-medium">+ 添加记录</button>
-        </div>
-        <div class="p-4 border-b border-slate-800 space-y-2">
-            <input id="upload-title" type="text" placeholder="文章标题" class="w-full bg-slate-800 border-none rounded-lg p-2 focus:ring-2 focus:ring-sky-500 outline-none">
-            <textarea id="upload-content" placeholder="粘贴文章内容" class="w-full bg-slate-800 border-none rounded-lg p-2 h-28 focus:ring-2 focus:ring-sky-500 outline-none resize-none"></textarea>
-            <input id="upload-pdf-file" type="file" accept=".pdf,application/pdf" onchange="onPdfFileChange(event)" class="w-full text-xs text-slate-300 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-slate-700 file:text-slate-100 hover:file:bg-slate-600">
-            <div id="upload-pdf-meta" class="text-xs text-slate-500"></div>
-            <div class="flex items-center justify-between">
-                <div class="flex gap-2">
-                    <button onclick="uploadDocument()" class="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg transition font-medium text-sm">上传文本</button>
-                    <button onclick="uploadPdfDocument()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg transition font-medium text-sm">上传 PDF</button>
+            <div class="composer">
+                <textarea id="user-input" rows="3" placeholder="输入问题... (Enter 发送, Shift+Enter 换行)" onkeydown="handleKeyDown(event)"></textarea>
+                <div class="action-row">
+                    <span class="tiny">按 Enter 发送 / Shift+Enter 换行</span>
+                    <button id="send-message-btn" onclick="sendMessage()" class="btn" data-tooltip="发送当前问题">发送</button>
                 </div>
-                <span id="upload-feedback" class="text-xs text-slate-400"></span>
             </div>
-            <div id="upload-progress-wrap" class="hidden">
-                <div class="w-full h-2 bg-slate-700 rounded overflow-hidden">
-                    <div id="upload-progress-bar" class="h-2 bg-sky-500 w-0 transition-all"></div>
-                </div>
-                <div id="upload-progress-text" class="text-xs text-slate-400 mt-1">0%</div>
-            </div>
-        </div>
-        <div id="timeline" class="flex-1 overflow-y-auto p-6 space-y-6">
-            </div>
-    </div>
+        </section>
 
-    <div id="modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl border border-slate-700">
-            <h3 class="text-lg font-bold mb-4">记录新想法</h3>
-            <div class="space-y-3">
-                <input id="new-date" type="text" placeholder="日期 (如 3/18)" class="w-full bg-slate-700 p-2 rounded outline-none focus:ring-1 focus:ring-sky-500">
-                <input id="new-title" type="text" placeholder="标题" class="w-full bg-slate-700 p-2 rounded outline-none focus:ring-1 focus:ring-sky-500">
-                <textarea id="new-content" placeholder="内容" class="w-full bg-slate-700 p-2 rounded h-32 outline-none focus:ring-1 focus:ring-sky-500"></textarea>
+        <aside class="panel fade-in" style="animation-delay: .12s">
+            <header class="panel-head">
+                <h2 class="panel-title">学习时间轴</h2>
+                <button onclick="toggleModal()" class="btn" data-tooltip="新增学习记录">+ 添加记录</button>
+            </header>
+            <section class="upload-box">
+                <input id="upload-title" type="text" placeholder="文章标题">
+                <textarea id="upload-content" placeholder="粘贴文章内容" rows="4"></textarea>
+                <input id="upload-pdf-file" class="file-input" type="file" accept=".pdf,application/pdf" onchange="onPdfFileChange(event)">
+                <div id="upload-pdf-meta" class="tiny"></div>
+                <div class="action-row">
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="uploadDocument()" class="btn" data-tooltip="上传文本资料">上传文本</button>
+                        <button onclick="uploadPdfDocument()" class="btn" data-tooltip="上传PDF资料">上传 PDF</button>
+                    </div>
+                    <span id="upload-feedback" class="tiny"></span>
+                </div>
+                <div id="upload-progress-wrap" class="progress-wrap">
+                    <div class="progress-track">
+                        <div id="upload-progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div id="upload-progress-text" class="tiny" style="margin-top:6px;">0%</div>
+                </div>
+            </section>
+            <section class="timeline-wrap">
+                <div id="timeline" class="timeline"></div>
+            </section>
+        </aside>
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-card fade-in">
+            <h3 style="margin:0 0 12px 0; font-size:var(--font-h4)">记录新想法</h3>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <input id="new-date" type="text" placeholder="日期 (如 3/18)">
+                <input id="new-title" type="text" placeholder="标题">
+                <textarea id="new-content" rows="5" placeholder="内容"></textarea>
             </div>
-            <div class="mt-6 flex gap-3">
-                <button onclick="saveRecord()" class="flex-1 bg-sky-600 py-2 rounded font-bold hover:bg-sky-500 transition">保存记录</button>
-                <button onclick="toggleModal()" class="flex-1 bg-slate-600 py-2 rounded hover:bg-slate-500 transition">取消</button>
+            <div class="modal-actions">
+                <button onclick="saveRecord()" class="btn" style="flex:1" data-tooltip="保存这条记录">保存记录</button>
+                <button onclick="toggleModal()" class="btn" style="flex:1" data-tooltip="关闭弹窗">取消</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. 对话逻辑 ---
+        let lastUserQuery = '';
+        const buttonTierCycle = ['btn-tier-1', 'btn-tier-2', 'btn-tier-3', 'btn-tier-4'];
 
-        // 处理回车发送逻辑
+        function applyButtonTierCycle() {
+            const btns = Array.from(document.querySelectorAll('button.btn'));
+            btns.forEach((btn, idx) => {
+                buttonTierCycle.forEach((tier) => btn.classList.remove(tier));
+                btn.classList.add(buttonTierCycle[idx % buttonTierCycle.length]);
+            });
+        }
+
+        function initTooltips() {
+            const all = document.querySelectorAll('[data-tooltip]');
+            all.forEach((el) => {
+                let timer = null;
+                const show = () => {
+                    const rect = el.getBoundingClientRect();
+                    const nearTop = rect.top < 64;
+                    const nearRight = rect.right > window.innerWidth - 20;
+                    const nearLeft = rect.left < 20;
+                    el.setAttribute('data-tooltip-pos', nearTop || nearRight || nearLeft ? 'bottom' : 'top');
+                    timer = setTimeout(() => {
+                        el.classList.add('tooltip-visible');
+                    }, 300);
+                };
+                const hide = () => {
+                    clearTimeout(timer);
+                    el.classList.remove('tooltip-visible');
+                };
+                el.addEventListener('mouseenter', show);
+                el.addEventListener('mouseleave', hide);
+                el.addEventListener('blur', hide);
+            });
+        }
+
         function handleKeyDown(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // 阻止 textarea 默认的换行行为
+                e.preventDefault();
                 sendMessage();
             }
         }
 
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function timelineState(index) {
+            if (index === 0) return { cls: 'status-progress', text: '进行中' };
+            if (index <= 2) return { cls: 'status-completed', text: '已完成' };
+            return { cls: 'status-pending', text: '待开始' };
+        }
+
         async function sendMessage() {
+            const sendBtn = document.getElementById('send-message-btn');
             const input = document.getElementById('user-input');
             const query = input.value.trim();
-            if(!query) return;
-
+            if (!query) return;
+            lastUserQuery = query;
             appendMsg(query, 'user');
             input.value = '';
-
+            sendBtn.disabled = true;
+            sendBtn.innerText = '生成中...';
             try {
                 await streamChat(query, true);
             } catch (err) {
-                console.error("发送失败:", err);
                 appendMsg('请求失败，请稍后重试。', 'ai');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerText = '发送';
             }
         }
-
-        // --- 2. 时间轴逻辑 ---
 
         async function loadTimeline() {
             try {
@@ -119,35 +576,25 @@
                 const data = await res.json();
                 const container = document.getElementById('timeline');
                 container.innerHTML = '';
-                
-                // 这里的 data 已经包含后端处理好的 original_idx
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'group border-l-2 border-slate-700 pl-4 relative mb-6';
+                data.forEach((item, index) => {
+                    const state = timelineState(index);
+                    const div = document.createElement('article');
+                    div.className = `timeline-item ${state.cls}`;
                     div.innerHTML = `
-                        <div class="absolute w-3 h-3 bg-sky-500 rounded-full -left-[7.5px] top-1"></div>
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="text-xs text-slate-500">${item.date}</div>
-                                <div class="font-semibold text-sky-400">${item.title}</div>
-                            </div>
-                            <button onclick="deleteRecord(${item.original_idx})" 
-                                    class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-400 transition p-1">
-                                [删除]
-                            </button>
-                        </div>
-                        <div class="text-sm text-slate-400 mt-1 leading-relaxed">${item.content}</div>
+                        <span class="status-tag">${state.text}</span>
+                        <div class="timeline-date">${escapeHtml(item.date || '')}</div>
+                        <div class="timeline-title">${escapeHtml(item.title || '')}</div>
+                        <div class="timeline-content">${escapeHtml(item.content || '')}</div>
+                        <button class="delete-btn" onclick="deleteRecord(${item.original_idx})">删除</button>
                     `;
                     container.appendChild(div);
                 });
-            } catch (err) {
-                console.error("加载时间轴失败:", err);
-            }
+                bindRevealMotion();
+            } catch (err) {}
         }
 
         async function deleteRecord(originalIdx) {
-            if(!confirm("确定要删除这条记忆吗？")) return;
-            
+            if (!confirm("确定要删除这条记录吗？")) return;
             await fetch('/record', {
                 method: 'DELETE',
                 headers: {'Content-Type': 'application/json'},
@@ -156,41 +603,31 @@
             loadTimeline();
         }
 
-        // --- 3. 记录添加与静默更新 ---
-
         function toggleModal() {
-            document.getElementById('modal').classList.toggle('hidden');
+            document.getElementById('modal').classList.toggle('show');
         }
 
         async function saveRecord() {
-            const date = document.getElementById('new-date').value;
-            const title = document.getElementById('new-title').value;
-            const content = document.getElementById('new-content').value;
-
-            if(!date || !title || !content) {
+            const date = document.getElementById('new-date').value.trim();
+            const title = document.getElementById('new-title').value.trim();
+            const content = document.getElementById('new-content').value.trim();
+            if (!date || !title || !content) {
                 alert("请填全所有字段");
                 return;
             }
-
-            // A. 添加新记录
             await fetch('/add', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({date, title, content})
             });
-            
             toggleModal();
             loadTimeline();
-            
-            // B. 清空表单
             document.getElementById('new-date').value = '';
             document.getElementById('new-title').value = '';
             document.getElementById('new-content').value = '';
-
-            // C. 静默通知 Agent 知识库已更新
             appendSystemTip("正在同步 Agent 认知...");
             await streamChat("用户刚刚添加了一条新记录，请重新检索知识库确认", false);
-            appendMsg("Agent 已感知到新纪录，知识库同步完成。", 'ai');
+            appendMsg("Agent 已感知到新记录，知识库同步完成。", 'ai');
         }
 
         async function uploadDocument() {
@@ -199,19 +636,15 @@
             const feedback = document.getElementById('upload-feedback');
             const title = titleInput.value.trim();
             const content = contentInput.value.trim();
-
             if (!title || !content) {
                 feedback.innerText = '请填写标题和内容';
                 return;
             }
-
             feedback.innerText = '上传中...';
             try {
                 const { ok, data } = await uploadWithProgress('/upload', JSON.stringify({ title, content }), {'Content-Type': 'application/json'});
-                if (!ok) {
-                    throw new Error(data.error || '上传失败');
-                }
-                feedback.innerText = `已切分为 ${data.chunks} 个片段`;
+                if (!ok) throw new Error(data.error || '上传失败');
+                feedback.innerText = `已切分 ${data.chunks} 段`;
                 titleInput.value = '';
                 contentInput.value = '';
             } catch (err) {
@@ -230,17 +663,13 @@
             }
             const formData = new FormData();
             const title = titleInput.value.trim();
-            if (title) {
-                formData.append('title', title);
-            }
+            if (title) formData.append('title', title);
             formData.append('file', file);
             feedback.innerText = '上传中...';
             try {
                 const { ok, data } = await uploadWithProgress('/upload', formData);
-                if (!ok) {
-                    throw new Error(data.error || '上传失败');
-                }
-                feedback.innerText = `已切分为 ${data.chunks} 个片段`;
+                if (!ok) throw new Error(data.error || '上传失败');
+                feedback.innerText = `已切分 ${data.chunks} 段`;
                 fileInput.value = '';
                 titleInput.value = '';
                 document.getElementById('upload-pdf-meta').innerText = '';
@@ -252,11 +681,7 @@
         function onPdfFileChange(event) {
             const file = event.target.files && event.target.files[0];
             const meta = document.getElementById('upload-pdf-meta');
-            if (!file) {
-                meta.innerText = '';
-                return;
-            }
-            meta.innerText = `已选择：${file.name}（${formatFileSize(file.size)}）`;
+            meta.innerText = file ? `已选择：${file.name}（${formatFileSize(file.size)}）` : '';
         }
 
         function formatFileSize(bytes) {
@@ -264,15 +689,6 @@
             if (bytes < 1024) return `${bytes} B`;
             if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
             return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        }
-
-        async function parseUploadResponse(res) {
-            const raw = await res.text();
-            try {
-                return JSON.parse(raw);
-            } catch (_) {
-                return { error: raw || `HTTP ${res.status}` };
-            }
         }
 
         function parseUploadResponseText(raw, status) {
@@ -290,13 +706,13 @@
         }
 
         function showUploadProgress() {
-            document.getElementById('upload-progress-wrap').classList.remove('hidden');
+            document.getElementById('upload-progress-wrap').style.display = 'block';
             setUploadProgress(0);
         }
 
         function hideUploadProgress() {
             setTimeout(() => {
-                document.getElementById('upload-progress-wrap').classList.add('hidden');
+                document.getElementById('upload-progress-wrap').style.display = 'none';
             }, 600);
         }
 
@@ -307,9 +723,7 @@
                 Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
                 showUploadProgress();
                 xhr.upload.onprogress = (evt) => {
-                    if (evt.lengthComputable) {
-                        setUploadProgress((evt.loaded / evt.total) * 100);
-                    }
+                    if (evt.lengthComputable) setUploadProgress((evt.loaded / evt.total) * 100);
                 };
                 xhr.onload = () => {
                     setUploadProgress(100);
@@ -330,67 +744,103 @@
 
         function formatUploadError(err) {
             if (err instanceof TypeError && String(err.message).includes('Failed to fetch')) {
-                return '上传失败：无法连接后端。请确认 Flask 服务已启动（python app.py），并检查后端是否因依赖报错退出。';
+                return '上传失败：无法连接后端，请确认 Flask 服务已启动。';
             }
             return `上传失败：${err.message}`;
         }
 
-        // UI 辅助函数
         async function streamChat(query, renderToChat = true) {
             const res = await fetch('/chat_stream', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({query})
             });
-            if (!res.ok || !res.body) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-
+            if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
             const reader = res.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
             let aiDiv = null;
-
+            let streamTextEl = null;
+            let streamSkeletonEl = null;
+            let streamCursorEl = null;
+            let streamActionsEl = null;
+            let seenText = false;
             if (renderToChat) {
-                aiDiv = appendMsg('', 'ai', true);
+                aiDiv = appendMsg('', 'ai');
+                aiDiv.classList.add('stream-bubble');
+                aiDiv.innerHTML = `
+                    <div class="stream-skeleton"></div>
+                    <span class="stream-text"></span><span class="stream-cursor"></span>
+                    <div class="stream-actions">
+                        <button class="stream-mini-btn">复制</button>
+                        <button class="stream-mini-btn">重新生成</button>
+                    </div>
+                `;
+                streamTextEl = aiDiv.querySelector('.stream-text');
+                streamSkeletonEl = aiDiv.querySelector('.stream-skeleton');
+                streamCursorEl = aiDiv.querySelector('.stream-cursor');
+                streamActionsEl = aiDiv.querySelector('.stream-actions');
             }
-
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-
                 buffer += decoder.decode(value, { stream: true });
                 const events = buffer.split('\n\n');
                 buffer = events.pop() || '';
-
                 for (const evt of events) {
                     const lines = evt.split('\n');
                     for (const line of lines) {
                         if (!line.startsWith('data: ')) continue;
                         const data = line.slice(6);
-                        if (data === '[DONE]') {
-                            continue;
-                        }
-                        if (renderToChat && aiDiv) {
-                            aiDiv.innerText += data;
+                        if (data === '[DONE]') continue;
+                        if (renderToChat && aiDiv && streamTextEl) {
+                            if (!seenText) {
+                                seenText = true;
+                                if (streamSkeletonEl) {
+                                    streamSkeletonEl.style.display = 'none';
+                                }
+                            }
+                            streamTextEl.innerText += data;
                             const win = document.getElementById('chat-window');
                             win.scrollTop = win.scrollHeight;
                         }
                     }
                 }
             }
+            if (renderToChat && aiDiv) {
+                const copyBtn = aiDiv.querySelector('.stream-mini-btn:nth-child(1)');
+                const regenBtn = aiDiv.querySelector('.stream-mini-btn:nth-child(2)');
+                if (streamCursorEl) streamCursorEl.style.display = 'none';
+                if (streamActionsEl) streamActionsEl.classList.add('show');
+                if (copyBtn && streamTextEl) {
+                    copyBtn.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(streamTextEl.innerText);
+                            copyBtn.innerText = '已复制';
+                            setTimeout(() => copyBtn.innerText = '复制', 1200);
+                        } catch (_) {}
+                    });
+                }
+                if (regenBtn) {
+                    regenBtn.addEventListener('click', async () => {
+                        if (!lastUserQuery) return;
+                        await streamChat(lastUserQuery, true);
+                    });
+                }
+            }
         }
 
         function appendMsg(text, role) {
             const win = document.getElementById('chat-window');
-            const div = document.createElement('div');
-            div.className = role === 'user' ? 
-                'chat-bubble-user p-4 rounded-lg ml-auto max-w-[85%] shadow-md mb-4' : 
-                'chat-bubble-ai p-4 rounded-lg mr-auto max-w-[85%] shadow-md mb-4';
-            div.innerText = text;
-            win.appendChild(div);
+            const row = document.createElement('div');
+            row.className = `chat-row ${role === 'user' ? 'user' : 'ai'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
+            bubble.innerText = text;
+            row.appendChild(bubble);
+            win.appendChild(row);
             win.scrollTop = win.scrollHeight;
-            return div;
+            return bubble;
         }
 
         function appendSystemTip(text) {
@@ -402,8 +852,21 @@
             win.scrollTop = win.scrollHeight;
         }
 
-        // 页面启动时加载数据
+        function bindRevealMotion() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('fade-in');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.timeline-item').forEach((el) => observer.observe(el));
+        }
+
         window.onload = loadTimeline;
+        applyButtonTierCycle();
+        initTooltips();
     </script>
 </body>
 </html>
