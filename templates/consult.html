@@ -4,663 +4,738 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>规划你的学习路径</title>
-    <link rel="stylesheet" href="/static/css/design-tokens.css">
     <style>
-        :root {
-            --bg-primary: #FAFAFA;
-            --bg-card: #FFFFFF;
-            --text-primary: #1A1A2E;
-            --text-secondary: #6B7280;
-            --brand-blue: #3B82F6;
-            --brand-blue-dark: #1D4ED8;
-            --brand-blue-light: #EFF6FF;
-            --brand-blue-mid: #BFDBFE;
-            --accent-yellow: #FBBF24;
-            --accent-yellow-light: #FEF9C3;
-            --border: #E5E7EB;
-            --success: #10B981;
-            --error: #EF4444;
-        }
         * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
-        }
+        body { margin: 0; background: #F8FAFC; color: #0F172A; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
         .shell {
-            width: min(1100px, 94vw);
-            margin: 20px auto;
+            width: min(1080px, 94vw);
+            margin: 16px auto;
+            height: calc(100vh - 32px);
             display: grid;
-            grid-template-rows: auto 1fr auto auto;
-            height: calc(100vh - 40px);
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+            grid-template-rows: auto 1fr auto auto auto;
+            border: 1px solid #E2E8F0;
             border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
             overflow: hidden;
+            background: #FFFFFF;
         }
         .topbar {
+            min-height: 62px;
+            border-bottom: 1px solid #E2E8F0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
+            padding: 10px 14px;
+            gap: 10px;
         }
-        .title {
-            font-size: 32px;
-            font-weight: 600;
-            margin: 0;
-        }
-        .back {
-            text-decoration: none;
-            color: var(--brand-blue-dark);
-            background: var(--brand-blue-light);
-            border: 1px solid var(--brand-blue-mid);
-            border-radius: 12px;
-            padding: 8px 12px;
-            transition: all 0.3s ease-in-out;
-        }
-        .back:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+        .back { color: #1D4ED8; text-decoration: none; font-weight: 600; }
+        .title { margin: 0; font-size: 20px; font-weight: 800; }
+        .context-tag {
+            font-size: 12px;
+            color: #1E3A8A;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 999px;
+            padding: 4px 10px;
         }
         .chat {
             overflow-y: auto;
-            padding: 18px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            background: #fff;
+            gap: 10px;
+            background: #FFFFFF;
         }
-        .bubble-row { display: flex; }
-        .bubble-row.ai { justify-content: flex-start; }
-        .bubble-row.user { justify-content: flex-end; }
+        .row { display: flex; }
+        .row.ai { justify-content: flex-start; }
+        .row.user { justify-content: flex-end; }
+        .bubble-wrap { max-width: 78%; }
         .bubble {
-            max-width: 78%;
+            position: relative;
             border-radius: 16px;
-            padding: 12px 14px;
-            font-size: 16px;
-            line-height: 1.6;
-            border: 1px solid var(--border);
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            background: #fff;
+            padding: 10px 12px;
+            font-size: 15px;
+            line-height: 1.65;
             white-space: pre-wrap;
             word-break: break-word;
         }
-        .bubble.ai {
-            background: #F3F4F6;
-        }
-        .bubble.user {
-            background: var(--brand-blue-light);
-            border-color: var(--brand-blue-mid);
-            color: var(--brand-blue-dark);
-        }
-        .stream-skeleton {
-            height: 18px;
-            border-radius: 9999px;
-            background: linear-gradient(90deg, #dbeafe, #bfdbfe, #dbeafe);
-            background-size: 220% 100%;
-            animation: sk 1.2s linear infinite;
-        }
-        .stream-cursor {
+        .bubble.ai { background: #F3F4F6; color: #111827; border-bottom-left-radius: 6px; }
+        .bubble.user { background: #3B82F6; color: #FFFFFF; border-bottom-right-radius: 6px; }
+        .cursor {
             display: inline-block;
-            width: 1px;
-            height: 1.1em;
-            background: var(--brand-blue);
-            margin-left: 3px;
+            width: 2px;
+            height: 1em;
+            background: #3B82F6;
             vertical-align: text-bottom;
+            margin-left: 2px;
             animation: blink 1s infinite;
         }
-        .stream-actions {
-            margin-top: 8px;
-            display: none;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        .stream-actions.show { display: flex; }
+        @keyframes blink { 0%,45%{opacity:1;} 55%,100%{opacity:0;} }
+        .bubble-actions { margin-top: 6px; display: none; gap: 8px; }
+        .bubble-actions.show { display: flex; animation: fadeIn .25s ease; }
         .mini-btn {
-            border: 1px solid var(--border);
-            background: #fff;
-            color: var(--text-secondary);
+            border: 1px solid #E2E8F0;
             border-radius: 8px;
-            padding: 4px 10px;
-            font-size: 13px;
+            background: #FFFFFF;
+            color: #475569;
+            font-size: 12px;
+            padding: 4px 8px;
             cursor: pointer;
-            transition: all 0.3s ease-in-out;
-        }
-        .mini-btn:hover {
-            color: var(--brand-blue-dark);
-            background: var(--brand-blue-light);
-            border-color: var(--brand-blue-mid);
         }
         .upload-zone {
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            background: #fff;
-            padding: 14px 18px;
+            border-top: 1px solid #E2E8F0;
+            border-bottom: 1px solid #E2E8F0;
+            padding: 10px 14px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
         }
-        .upload-card {
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            background: #fff;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            padding: 12px;
-            transition: all 0.3s ease-in-out;
-        }
-        .upload-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 18px rgba(0,0,0,0.1);
-        }
-        .upload-card.blue {
-            border-color: var(--brand-blue-mid);
-            background: var(--brand-blue-light);
-        }
-        .upload-card.yellow {
-            border-color: var(--accent-yellow);
-            background: var(--accent-yellow-light);
-        }
-        .upload-title {
-            margin: 0 0 6px;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .upload-tip {
-            margin: 0 0 8px;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-        .upload-file {
-            width: 100%;
-            font-size: 14px;
-        }
+        .upload-card { border-radius: 14px; padding: 10px; background: #FFFFFF; }
+        .upload-card.blue { border: 1px solid #3B82F6; }
+        .upload-card.yellow { border: 1px solid #FBBF24; }
+        .upload-title { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
+        .upload-tip { margin: 0; color: #64748B; font-size: 13px; }
+        .file-name { margin-top: 6px; color: #0F172A; font-size: 12px; min-height: 18px; }
         .composer {
-            padding: 14px 18px;
-            background: #fff;
+            padding: 10px 14px;
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 10px;
             align-items: end;
+            background: #FFFFFF;
         }
-        textarea {
-            width: 100%;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 10px 12px;
-            outline: none;
+        #input {
+            min-height: 52px;
+            max-height: 180px;
             resize: none;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        textarea:focus {
-            border-color: var(--brand-blue);
-            box-shadow: 0 0 0 3px rgba(59,130,246,.16);
-        }
-        .send-btn {
-            border: 1px solid var(--brand-blue);
-            background: var(--brand-blue-light);
-            color: var(--brand-blue-dark);
+            border: 1px solid #CBD5E1;
             border-radius: 12px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease-in-out;
-        }
-        .send-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
-        }
-        .send-btn:active { transform: translateY(0); box-shadow: none; }
-        .send-btn:disabled { opacity: .55; cursor: not-allowed; }
-        .suggestions {
-            padding: 0 18px 12px;
-            background: #fff;
-            display: grid;
-            gap: 10px;
-        }
-        .suggestion-card {
-            border: 1px dashed var(--brand-blue-mid);
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
             padding: 12px;
-            transition: all 0.3s ease-in-out;
+            font-size: 15px;
+            line-height: 1.5;
+            outline: none;
         }
-        .suggestion-card.added {
-            border-style: dashed;
-            border-color: var(--success);
-            background: #ecfdf5;
-        }
-        .suggestion-title {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        .suggestion-desc {
-            margin: 4px 0;
-            color: var(--text-secondary);
+        #input:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+        .actions { display: flex; gap: 8px; align-items: center; }
+        .send-btn {
+            border: none;
+            border-radius: 10px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            padding: 0 16px;
+            height: 40px;
             font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
         }
-        .suggestion-actions {
-            margin-top: 8px;
-            display: flex;
-            gap: 8px;
+        .send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid #CBD5E1;
+            background: #FFFFFF;
+            cursor: pointer;
+            font-size: 16px;
         }
         .gen-wrap {
+            padding: 0 14px 12px;
             display: none;
-            padding: 0 18px 18px;
-            background: #fff;
             justify-content: flex-end;
-        }
-        .gen-btn {
-            border: 1px solid var(--brand-blue);
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
-            color: #fff;
-            border-radius: 12px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease-in-out;
-        }
-        .gen-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
-        }
-        .gen-btn:active { transform: translateY(0); box-shadow: none; }
-        .reveal {
+            background: #FFFFFF;
             opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.3s ease-in-out;
+            transform: translateY(10px);
         }
-        .reveal.show {
-            opacity: 1;
-            transform: translateY(0);
+        .gen-wrap.show { display: flex; animation: fadeIn .3s ease forwards; }
+        .gen-btn {
+            border: none;
+            height: 40px;
+            border-radius: 10px;
+            background: #2563EB;
+            color: #FFFFFF;
+            padding: 0 16px;
+            font-weight: 700;
+            cursor: pointer;
         }
-        @keyframes blink {
-            0%, 45% { opacity: 1; }
-            55%, 100% { opacity: 0; }
+        .suggest-group {
+            margin-top: 8px;
+            display: grid;
+            gap: 8px;
         }
-        @keyframes sk {
-            from { background-position: 100% 0; }
-            to { background-position: -100% 0; }
+        .suggest-card {
+            display: grid;
+            grid-template-columns: 6px 1fr auto;
+            gap: 10px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+            transition: transform .2s ease, opacity .2s ease;
         }
-        @media (max-width: 900px) {
-            .shell {
-                width: 100vw;
-                height: 100vh;
-                margin: 0;
-                border-radius: 0;
-            }
-            .title { font-size: 24px; }
+        .suggest-card.removing { opacity: 0; transform: translateX(24px); }
+        .suggest-bar { border-radius: 8px; }
+        .suggest-name { margin: 0 0 4px; font-size: 15px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .type-badge {
+            font-size: 11px;
+            border-radius: 999px;
+            padding: 2px 8px;
+            background: #EFF6FF;
+            color: #1D4ED8;
+            border: 1px solid #BFDBFE;
+        }
+        .suggest-desc { margin: 0; font-size: 13px; color: #475569; line-height: 1.6; }
+        .suggest-actions { display: flex; gap: 8px; align-items: center; }
+        .add-btn {
+            border: none;
+            border-radius: 8px;
+            height: 32px;
+            padding: 0 10px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .add-btn:disabled { background: #94A3B8; cursor: not-allowed; }
+        .skip-btn {
+            border: none;
+            background: transparent;
+            color: #64748B;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            background: #16A34A;
+            color: #FFFFFF;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            opacity: 0;
+            transform: translateY(6px);
+            pointer-events: none;
+            transition: opacity .2s ease, transform .2s ease;
+            z-index: 50;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+        @media (max-width: 920px) {
+            .shell { width: 100vw; height: 100vh; margin: 0; border-radius: 0; }
             .upload-zone { grid-template-columns: 1fr; }
             .composer { grid-template-columns: 1fr; }
+            .topbar { flex-wrap: wrap; }
         }
     </style>
 </head>
 <body>
     <main class="shell">
-        <header class="topbar reveal">
-            <a href="/map" class="back">← 返回</a>
+        <header class="topbar">
+            <a id="back-link" class="back" href="/bubble.html">← 返回 bubble.html</a>
             <h1 class="title">规划你的学习路径</h1>
-            <div style="width:56px;"></div>
+            <div id="context-tag" class="context-tag" style="display:none;"></div>
         </header>
 
-        <section id="chat-area" class="chat"></section>
+        <section id="chat" class="chat"></section>
 
-        <section class="upload-zone reveal">
+        <section class="upload-zone">
             <article class="upload-card blue">
-                <h3 class="upload-title">📓 学习记录</h3>
-                <p class="upload-tip">分析已掌握能力并更新节点状态</p>
-                <input id="record-file" class="upload-file" type="file" accept=".txt,.md,.json,.csv,.log,.pdf">
+                <h3 class="upload-title">📓 学习过程记录</h3>
+                <p class="upload-tip">笔记、作业、日志 → AI 分析已掌握内容</p>
+                <div id="record-name" class="file-name"></div>
             </article>
             <article class="upload-card yellow">
                 <h3 class="upload-title">📚 知识库</h3>
-                <p class="upload-tip">从资料中推荐新学习节点</p>
-                <input id="knowledge-file" class="upload-file" type="file" accept=".txt,.md,.json,.csv,.log,.pdf">
+                <p class="upload-tip">教材、文档、参考资料 → AI 推荐新学习节点</p>
+                <div id="knowledge-name" class="file-name"></div>
             </article>
+            <input id="record-file" type="file" accept=".txt,.pdf,.md" hidden>
+            <input id="knowledge-file" type="file" accept=".txt,.pdf,.md" hidden>
         </section>
 
-        <section id="suggestions" class="suggestions"></section>
-
-        <section class="composer reveal">
-            <textarea id="input-box" rows="3" placeholder="输入学习目标或当前状态，按 Enter 发送（Shift+Enter 换行）"></textarea>
-            <button id="send-btn" class="send-btn">发送</button>
+        <section class="composer">
+            <textarea id="input"></textarea>
+            <div class="actions">
+                <button id="record-trigger" class="icon-btn" title="上传学习记录">📝</button>
+                <button id="knowledge-trigger" class="icon-btn" title="上传知识库">📚</button>
+                <button id="send-btn" class="send-btn">发送</button>
+            </div>
         </section>
+
         <div id="gen-wrap" class="gen-wrap">
-            <button id="generate-btn" class="gen-btn">生成节点图</button>
+            <button id="gen-btn" class="gen-btn">生成节点图</button>
         </div>
     </main>
+    <div id="toast" class="toast"></div>
 
     <script>
-        const pathId = "{{ path_id }}";
-        const chatArea = document.getElementById('chat-area');
+        const params = new URLSearchParams(window.location.search);
+        const pathId = (params.get('path_id') || '').trim();
+        const nodeId = (params.get('node_id') || '').trim();
+        const isAppendMode = !!pathId;
+        const isNodeMode = !!pathId && !!nodeId;
+        let pathName = '';
+        let nodeName = '';
+        let aiCount = 0;
+        let lastUserPrompt = '';
+        let pendingNodeAdds = [];
+        let pendingRecordFile = null;
+        let pendingKnowledgeFile = null;
+        const chat = document.getElementById('chat');
+        const input = document.getElementById('input');
         const sendBtn = document.getElementById('send-btn');
-        const inputBox = document.getElementById('input-box');
+        const backLink = document.getElementById('back-link');
+        const contextTag = document.getElementById('context-tag');
+        const genWrap = document.getElementById('gen-wrap');
+        const genBtn = document.getElementById('gen-btn');
         const recordFile = document.getElementById('record-file');
         const knowledgeFile = document.getElementById('knowledge-file');
-        const suggestionsWrap = document.getElementById('suggestions');
-        const genWrap = document.getElementById('gen-wrap');
-        const generateBtn = document.getElementById('generate-btn');
-        let lastUserPrompt = '';
-        let pendingNodes = [];
+        const toast = document.getElementById('toast');
 
-        function revealPage() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('show');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, { threshold: 0.12 });
-            document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+        function autoGrow() {
+            input.style.height = '52px';
+            input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
         }
 
         function addBubble(role, text = '') {
             const row = document.createElement('div');
-            row.className = `bubble-row ${role}`;
+            row.className = `row ${role}`;
+            const wrap = document.createElement('div');
+            wrap.className = 'bubble-wrap';
             const bubble = document.createElement('div');
             bubble.className = `bubble ${role}`;
-            bubble.textContent = text;
-            row.appendChild(bubble);
-            chatArea.appendChild(row);
-            chatArea.scrollTop = chatArea.scrollHeight;
-            return bubble;
+            bubble.innerHTML = escapeHtml(text);
+            wrap.appendChild(bubble);
+            row.appendChild(wrap);
+            chat.appendChild(row);
+            chat.scrollTop = chat.scrollHeight;
+            return { row, wrap, bubble };
         }
 
-        function parseFirstJsonObject(text) {
+        function showToast(text) {
+            toast.textContent = text;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function showAiActions(wrap, text, promptForRegenerate) {
+            const actions = document.createElement('div');
+            actions.className = 'bubble-actions show';
+            actions.innerHTML = '<button class="mini-btn">复制</button><button class="mini-btn">重新生成</button>';
+            const [copyBtn, regenBtn] = actions.querySelectorAll('.mini-btn');
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copyBtn.textContent = '已复制';
+                    setTimeout(() => copyBtn.textContent = '复制', 1000);
+                } catch (_) {}
+            });
+            regenBtn.addEventListener('click', async () => {
+                await requestAi(promptForRegenerate, false);
+            });
+            wrap.appendChild(actions);
+        }
+
+        function showStaticAiBubble(text) {
+            addBubble('ai', text || '');
+        }
+
+        async function requestAi(prompt, countAsConversation = true) {
+            const ai = addBubble('ai', '');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '生成中...';
+            let finalText = '';
+            try {
+                ai.bubble.innerHTML = '<span class="cursor"></span>';
+                const res = await fetch('/chat_stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: prompt })
+                });
+                if (!res.ok || !res.body) {
+                    throw new Error('stream failed');
+                }
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let doneBySignal = false;
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const events = buffer.split('\n\n');
+                    buffer = events.pop() || '';
+                    for (const evt of events) {
+                        const lines = evt.split('\n');
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const data = line.slice(6);
+                            if (data === '[DONE]') {
+                                doneBySignal = true;
+                                break;
+                            }
+                            finalText += data;
+                            ai.bubble.innerHTML = `${escapeHtml(finalText)}<span class="cursor"></span>`;
+                            chat.scrollTop = chat.scrollHeight;
+                        }
+                        if (doneBySignal) break;
+                    }
+                    if (doneBySignal) break;
+                }
+                ai.bubble.innerHTML = escapeHtml(finalText);
+                showAiActions(ai.wrap, finalText, prompt);
+                if (countAsConversation) {
+                    aiCount += 1;
+                    if (aiCount >= 2) genWrap.classList.add('show');
+                }
+            } catch (_) {
+                ai.bubble.textContent = '请求失败，请检查后端服务。';
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+            }
+            return finalText;
+        }
+
+        function extractJsonBlock(text) {
             if (!text) return null;
-            const direct = text.trim();
+            const match = text.match(/```json\s*([\s\S]*?)\s*```/i);
+            if (!match) return null;
             try {
-                return JSON.parse(direct);
-            } catch (_) {}
-            const start = direct.indexOf('{');
-            const end = direct.lastIndexOf('}');
-            if (start === -1 || end === -1 || end <= start) return null;
-            const slice = direct.slice(start, end + 1);
-            try {
-                return JSON.parse(slice);
+                return JSON.parse(match[1]);
             } catch (_) {
                 return null;
             }
         }
 
-        async function streamPrompt(prompt, opts = {}) {
-            const bubble = addBubble('ai', '');
-            bubble.innerHTML = `
-                <div class="stream-skeleton"></div>
-                <span class="stream-text"></span><span class="stream-cursor"></span>
-                <div class="stream-actions">
-                    <button class="mini-btn">复制</button>
-                    <button class="mini-btn">重新生成</button>
-                </div>
-            `;
-            const textEl = bubble.querySelector('.stream-text');
-            const skeletonEl = bubble.querySelector('.stream-skeleton');
-            const cursorEl = bubble.querySelector('.stream-cursor');
-            const actionsEl = bubble.querySelector('.stream-actions');
-            const copyBtn = actionsEl.querySelector('.mini-btn:nth-child(1)');
-            const regenBtn = actionsEl.querySelector('.mini-btn:nth-child(2)');
-
-            sendBtn.disabled = true;
-            sendBtn.innerText = '生成中...';
-
-            const res = await fetch('/chat_stream', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({query: prompt})
-            });
-            if (!res.ok || !res.body) {
-                bubble.textContent = '请求失败，请稍后重试。';
-                sendBtn.disabled = false;
-                sendBtn.innerText = '发送';
-                return '';
-            }
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let all = '';
-            let buffer = '';
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const events = buffer.split('\n\n');
-                buffer = events.pop() || '';
-                for (const evt of events) {
-                    const lines = evt.split('\n');
-                    for (const line of lines) {
-                        if (!line.startsWith('data: ')) continue;
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        if (skeletonEl && skeletonEl.style.display !== 'none') skeletonEl.style.display = 'none';
-                        all += data;
-                        textEl.textContent = all;
-                        chatArea.scrollTop = chatArea.scrollHeight;
-                    }
-                }
-            }
-            if (cursorEl) cursorEl.style.display = 'none';
-            actionsEl.classList.add('show');
-            copyBtn.addEventListener('click', async () => {
-                try {
-                    await navigator.clipboard.writeText(all);
-                    copyBtn.innerText = '已复制';
-                    setTimeout(() => copyBtn.innerText = '复制', 1000);
-                } catch (_) {}
-            });
-            regenBtn.addEventListener('click', async () => {
-                await streamPrompt(lastUserPrompt || prompt, opts);
-            });
-
-            sendBtn.disabled = false;
-            sendBtn.innerText = '发送';
-            genWrap.style.display = 'flex';
-            return all;
+        function todayDate() {
+            const d = new Date();
+            const m = `${d.getMonth() + 1}`.padStart(2, '0');
+            const day = `${d.getDate()}`.padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
         }
 
-        async function updateNodeStatuses(pathIdValue, updates) {
-            if (!pathIdValue || !Array.isArray(updates)) return;
-            for (const item of updates) {
-                const nodeId = (item.node_id || '').trim();
-                const status = (item.new_status || '').trim();
-                if (!nodeId || !status) continue;
-                await fetch('/update_node_status', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({path_id: pathIdValue, node_id: nodeId, new_status: status})
-                });
-            }
+        function typeColor(type) {
+            if (type === 'core') return '#3B82F6';
+            if (type === 'advanced') return '#1D4ED8';
+            if (type === 'optional') return '#F59E0B';
+            return '#3B82F6';
         }
 
-        function renderSuggestions(cards) {
-            suggestionsWrap.innerHTML = '';
-            if (!Array.isArray(cards) || cards.length === 0) return;
-            cards.forEach((item, idx) => {
+        function renderSuggestionGroup(anchorRow, suggestions) {
+            if (!Array.isArray(suggestions) || !suggestions.length) return;
+            const group = document.createElement('div');
+            group.className = 'suggest-group';
+            suggestions.forEach((item, idx) => {
+                const type = item.type || 'prerequisite';
                 const card = document.createElement('article');
-                card.className = 'suggestion-card';
+                card.className = 'suggest-card';
                 card.innerHTML = `
-                    <h4 class="suggestion-title">${item.label || '未命名节点'}</h4>
-                    <p class="suggestion-desc">${item.description || ''}</p>
-                    <p class="suggestion-desc">推荐理由：${item.reason || ''}</p>
-                    <div class="suggestion-actions">
-                        <button class="mini-btn add-btn">添加到路径</button>
-                        <button class="mini-btn skip-btn">跳过</button>
+                    <div class="suggest-bar" style="background:${typeColor(type)};"></div>
+                    <div>
+                        <h4 class="suggest-name">
+                            <span>${escapeHtml(item.label || '未命名节点')}</span>
+                            <span class="type-badge">${escapeHtml(type)}</span>
+                        </h4>
+                        <p class="suggest-desc">${escapeHtml(item.description || '')}</p>
+                        <p class="suggest-desc">推荐理由：${escapeHtml(item.reason || '')}</p>
+                    </div>
+                    <div class="suggest-actions">
+                        <button class="add-btn" type="button">添加到路径</button>
+                        <button class="skip-btn" type="button">跳过</button>
                     </div>
                 `;
                 const addBtn = card.querySelector('.add-btn');
                 const skipBtn = card.querySelector('.skip-btn');
                 addBtn.addEventListener('click', async () => {
                     const node = {
-                        id: `s${Date.now()}_${idx}`,
+                        id: `sg_${Date.now()}_${idx}`,
                         label: item.label || '新增节点',
-                        type: item.type || 'optional',
+                        type,
                         status: 'notStarted',
                         needsAssessment: true,
                         description: item.description || ''
                     };
                     if (pathId) {
-                        const r = await fetch('/save_path', {
+                        const res = await fetch('/save_path', {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({path_id: pathId, append_node: node})
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path_id: pathId, append_node: node })
                         });
-                        if (!r.ok) {
-                            addBtn.innerText = '添加失败';
-                            return;
-                        }
+                        if (!res.ok) return;
                     } else {
-                        pendingNodes.push(node);
+                        pendingNodeAdds.push(node);
                     }
-                    card.classList.add('added');
                     addBtn.disabled = true;
-                    addBtn.innerText = pathId ? '已添加到路径' : '新增待连接';
+                    addBtn.textContent = '✓ 已添加';
                 });
                 skipBtn.addEventListener('click', () => {
-                    card.remove();
+                    card.classList.add('removing');
+                    setTimeout(() => card.remove(), 220);
                 });
-                suggestionsWrap.appendChild(card);
+                group.appendChild(card);
             });
+            anchorRow.insertAdjacentElement('afterend', group);
+            chat.scrollTop = chat.scrollHeight;
         }
 
-        async function readFileAsText(file) {
+        function updateModeUI() {
+            if (isAppendMode) {
+                backLink.href = `/map.html?path_id=${encodeURIComponent(pathId)}`;
+            } else {
+                backLink.href = '/bubble.html';
+            }
+            if (isNodeMode && nodeName) {
+                contextTag.style.display = 'inline-block';
+                contextTag.textContent = `当前节点：${nodeName}`;
+            }
+            if (isNodeMode) {
+                input.placeholder = '你可以讲讲你做过的实践、理解的要点或目前卡住的问题...';
+            } else if (isAppendMode) {
+                input.placeholder = '想继续深化还是拓展新方向？';
+            } else {
+                input.placeholder = '例如：我想系统学习机器学习，有 Python 基础但没学过数学...';
+            }
+        }
+
+        function buildOpening() {
+            if (isNodeMode) {
+                return `我们来聊聊「${nodeName || '当前节点'}」，你目前对这个概念了解到什么程度？`;
+            }
+            if (isAppendMode) {
+                return `你目前在学${pathName || '这条路径'}，想继续深化这条路径，还是拓展新方向？`;
+            }
+            return '你好！告诉我你想学什么，我们来规划你的专属学习路径 🗺️';
+        }
+
+        async function readFileText(file) {
             if (!file) return '';
             return await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(String(reader.result || ''));
-                reader.onerror = () => reject(new Error('读取文件失败'));
+                reader.onerror = () => reject(new Error('read failed'));
                 reader.readAsText(file, 'utf-8');
             });
         }
 
-        async function sendUserPrompt() {
-            const text = inputBox.value.trim();
-            if (!text) return;
+        async function sendMessage() {
+            let text = input.value.trim();
+            if (!text && !pendingRecordFile && !pendingKnowledgeFile) return;
+            if (!text && pendingRecordFile) text = '请分析我上传的学习记录';
+            if (!text && pendingKnowledgeFile) text = '请分析我上传的知识库文档';
             addBubble('user', text);
-            inputBox.value = '';
-            lastUserPrompt = text;
-            await streamPrompt(text);
+            input.value = '';
+            autoGrow();
+            let prompt = text;
+            if (isNodeMode && nodeName) prompt = `当前学习节点：${nodeName}\n${prompt}`;
+
+            if (pendingRecordFile) {
+                const file = pendingRecordFile;
+                pendingRecordFile = null;
+                document.getElementById('record-name').textContent = '';
+                let fileText = '';
+                try {
+                    fileText = await readFileText(file);
+                } catch (_) {
+                    fileText = '';
+                }
+                const systemAppend = '分析以下学习记录，判断用户对各知识节点的掌握程度。在正常回复末尾，另起一行附加如下 JSON 块：\n```json\n{"updates":[{"node_id":"...","new_status":"mastered|learning|notStarted"}]}\n```';
+                prompt = `${prompt}\n\n${systemAppend}\n\n学习记录文件名：${file.name}\n学习记录内容：\n${fileText}`;
+                lastUserPrompt = prompt;
+                const full = await requestAi(prompt, true);
+                const parsed = extractJsonBlock(full);
+                const updates = Array.isArray(parsed?.updates) ? parsed.updates : [];
+                let okCount = 0;
+                for (const item of updates) {
+                    const body = {
+                        node_id: (item.node_id || '').trim(),
+                        new_status: (item.new_status || '').trim()
+                    };
+                    if (!body.node_id || !body.new_status) continue;
+                    if (pathId) body.path_id = pathId;
+                    const res = await fetch('/update_node_status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (res.ok) okCount += 1;
+                }
+                showToast(`✓ 已更新 ${okCount} 个节点状态`);
+                await fetch('/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: todayDate(),
+                        title: '上传学习记录并完成 AI 分析',
+                        content: `文件：${file.name}`
+                    })
+                });
+                return;
+            }
+
+            if (pendingKnowledgeFile) {
+                const file = pendingKnowledgeFile;
+                pendingKnowledgeFile = null;
+                document.getElementById('knowledge-name').textContent = '';
+                let fileText = '';
+                try {
+                    fileText = await readFileText(file);
+                } catch (_) {
+                    fileText = '';
+                }
+                const systemAppend = '从以下知识库文档提取 3-6 个适合作为学习节点的知识点。在正常回复末尾附加 JSON 块：\n```json\n{"suggestions":[{"label":"节点名","type":"prerequisite|core|advanced|optional","description":"一句话描述","reason":"推荐理由（15字内）"}]}\n```';
+                prompt = `${prompt}\n\n${systemAppend}\n\n知识库文件名：${file.name}\n知识库内容：\n${fileText}`;
+                lastUserPrompt = prompt;
+                const before = chat.lastElementChild;
+                const full = await requestAi(prompt, true);
+                const parsed = extractJsonBlock(full);
+                const suggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+                const latestAiRow = chat.lastElementChild && chat.lastElementChild !== before ? chat.lastElementChild : null;
+                if (latestAiRow) renderSuggestionGroup(latestAiRow, suggestions);
+                return;
+            }
+
+            lastUserPrompt = prompt;
+            await requestAi(prompt, true);
         }
 
-        inputBox.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendUserPrompt();
-            }
-        });
-        sendBtn.addEventListener('click', sendUserPrompt);
+        function remapAndMerge(baseNodes, baseEdges, generated) {
+            const used = new Set(baseNodes.map((n) => n.id));
+            const idMap = {};
+            const appendedNodes = [];
+            (generated.nodes || []).forEach((n, idx) => {
+                let nid = n.id || `n${baseNodes.length + idx + 1}`;
+                while (used.has(nid)) {
+                    nid = `n${baseNodes.length + appendedNodes.length + 1}`;
+                }
+                used.add(nid);
+                idMap[n.id] = nid;
+                appendedNodes.push({ ...n, id: nid });
+            });
+            const appendedEdges = (generated.edges || [])
+                .map((e) => ({ from: idMap[e.from], to: idMap[e.to] }))
+                .filter((e) => e.from && e.to);
+            return {
+                nodes: [...baseNodes, ...appendedNodes],
+                edges: [...baseEdges, ...appendedEdges]
+            };
+        }
 
-        recordFile.addEventListener('change', async (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (!file) return;
-            const content = await readFileAsText(file);
-            const prompt = `以下是用户的学习记录，请分析其中体现的掌握情况，告诉用户哪些知识点已掌握，哪些还需加强，并以 JSON 附在回复末尾：{"updates":[{"node_id":"...","new_status":"mastered|learning"}]}\n\n学习记录内容：\n${content}`;
-            lastUserPrompt = prompt;
-            const all = await streamPrompt(prompt);
-            const parsed = parseFirstJsonObject(all);
-            if (parsed && Array.isArray(parsed.updates)) {
-                await updateNodeStatuses(pathId, parsed.updates);
-            }
-        });
-
-        knowledgeFile.addEventListener('change', async (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (!file) return;
-            const content = await readFileAsText(file);
-            const prompt = `以下是用户上传的参考资料，请从中提取3-6个有价值的学习节点，以 JSON 格式附在回复末尾：{"suggestions":[{"label":"...","type":"prerequisite|core|advanced|optional","description":"...","reason":"..."}]}\n\n资料内容：\n${content}`;
-            lastUserPrompt = prompt;
-            const all = await streamPrompt(prompt);
-            const parsed = parseFirstJsonObject(all);
-            if (parsed && Array.isArray(parsed.suggestions)) {
-                renderSuggestions(parsed.suggestions);
-            }
-        });
-
-        generateBtn.addEventListener('click', async () => {
-            const description = (lastUserPrompt || "请基于当前对话生成学习路径").slice(0, 3000);
-            generateBtn.disabled = true;
-            generateBtn.innerText = '生成中...';
+        async function generatePath() {
+            genBtn.disabled = true;
+            genBtn.textContent = '生成中...';
             try {
+                const description = (lastUserPrompt || '请根据对话生成学习路径').slice(0, 4000);
                 const genRes = await fetch('/generate_path', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({description})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description, path_id: pathId || undefined })
                 });
                 const generated = await genRes.json();
-                if (!genRes.ok) {
-                    addBubble('ai', '路径生成失败，请稍后重试。');
-                    return;
-                }
-
-                if (pathId) {
-                    const currentRes = await fetch(`/get_path/${encodeURIComponent(pathId)}`);
-                    const current = currentRes.ok ? await currentRes.json() : null;
-                    const baseNodes = (current && Array.isArray(current.nodes)) ? current.nodes : [];
-                    const baseEdges = (current && Array.isArray(current.edges)) ? current.edges : [];
-                    const used = new Set(baseNodes.map((n) => n.id));
-                    const mappedNodes = [];
-                    const idMap = {};
-                    generated.nodes.forEach((node, idx) => {
-                        let nid = node.id || `n${baseNodes.length + idx + 1}`;
-                        while (used.has(nid)) {
-                            nid = `n${baseNodes.length + mappedNodes.length + 1}`;
-                        }
-                        used.add(nid);
-                        idMap[node.id] = nid;
-                        mappedNodes.push({...node, id: nid});
-                    });
-                    const mappedEdges = (generated.edges || [])
-                        .map((e) => ({from: idMap[e.from], to: idMap[e.to]}))
-                        .filter((e) => e.from && e.to);
-                    const mergedNodes = [...baseNodes, ...mappedNodes, ...pendingNodes];
-                    const mergedEdges = [...baseEdges, ...mappedEdges];
-                    await fetch('/save_path', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            path_id: pathId,
-                            title: current?.title || generated.title || "学习路径",
-                            nodes: mergedNodes,
-                            edges: mergedEdges
-                        })
-                    });
-                    window.location.href = `/map?path_id=${encodeURIComponent(pathId)}`;
-                } else {
+                if (!genRes.ok) return;
+                if (!isAppendMode) {
                     const saveRes = await fetch('/save_path', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            title: generated.title || "学习路径",
+                            title: generated.title || '学习路径',
                             nodes: generated.nodes || [],
                             edges: generated.edges || []
                         })
                     });
                     const saved = await saveRes.json();
-                    if (!saveRes.ok || !saved.path_id) {
-                        addBubble('ai', '路径保存失败，请稍后重试。');
-                        return;
+                    if (saveRes.ok && saved.path_id) {
+                        for (const node of pendingNodeAdds) {
+                            await fetch('/save_path', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ path_id: saved.path_id, append_node: node })
+                            });
+                        }
+                        window.location.href = `/map.html?path_id=${encodeURIComponent(saved.path_id)}`;
                     }
-                    const newPathId = saved.path_id;
-                    for (const node of pendingNodes) {
-                        await fetch('/save_path', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({path_id: newPathId, append_node: node})
-                        });
-                    }
-                    window.location.href = `/map?path_id=${encodeURIComponent(newPathId)}`;
+                } else {
+                    const currentRes = await fetch(`/get_path/${encodeURIComponent(pathId)}`);
+                    const current = currentRes.ok ? await currentRes.json() : { nodes: [], edges: [], title: pathName || '学习路径' };
+                    const merged = remapAndMerge(current.nodes || [], current.edges || [], generated);
+                    await fetch('/save_path', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path_id: pathId,
+                            title: current.title || generated.title || '学习路径',
+                            nodes: merged.nodes,
+                            edges: merged.edges
+                        })
+                    });
+                    window.location.href = `/map.html?path_id=${encodeURIComponent(pathId)}`;
                 }
             } finally {
-                generateBtn.disabled = false;
-                generateBtn.innerText = '生成节点图';
+                genBtn.disabled = false;
+                genBtn.textContent = '生成节点图';
+            }
+        }
+
+        async function init() {
+            if (isAppendMode) {
+                try {
+                    const res = await fetch(`/get_path/${encodeURIComponent(pathId)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        pathName = data.title || '';
+                        if (isNodeMode) {
+                            const target = (data.nodes || []).find((n) => n.id === nodeId);
+                            nodeName = target ? target.label : nodeId;
+                        }
+                    }
+                } catch (_) {}
+            }
+            updateModeUI();
+            showStaticAiBubble(buildOpening());
+        }
+
+        input.addEventListener('input', autoGrow);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
         });
-
-        addBubble('ai', '你好！告诉我你想学什么，或者描述你目前的状态，我来帮你规划学习路径 🗺️');
-        revealPage();
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        document.getElementById('record-trigger').addEventListener('click', () => recordFile.click());
+        document.getElementById('knowledge-trigger').addEventListener('click', () => knowledgeFile.click());
+        recordFile.addEventListener('change', async (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            document.getElementById('record-name').textContent = `已选择：${f.name}`;
+            pendingRecordFile = f;
+            pendingKnowledgeFile = null;
+            document.getElementById('knowledge-name').textContent = '';
+        });
+        knowledgeFile.addEventListener('change', async (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            document.getElementById('knowledge-name').textContent = `已选择：${f.name}`;
+            pendingKnowledgeFile = f;
+            pendingRecordFile = null;
+            document.getElementById('record-name').textContent = '';
+        });
+        genBtn.addEventListener('click', generatePath);
+        autoGrow();
+        init();
     </script>
 </body>
 </html>

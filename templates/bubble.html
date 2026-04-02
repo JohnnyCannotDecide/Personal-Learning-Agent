@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习路径总览</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #FFFFFF;
+            color: #0F172A;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            min-height: 100vh;
+        }
+        a { color: inherit; text-decoration: none; }
+        .container {
+            width: min(1120px, 92vw);
+            margin: 0 auto;
+        }
+        .nav {
+            border-bottom: 1px solid #E2E8F0;
+            background: #FFFFFF;
+        }
+        .nav-inner {
+            min-height: 64px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: #3B82F6;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 15px;
+        }
+        .nav-links a {
+            color: #334155;
+            font-weight: 600;
+        }
+        .nav-links a:hover {
+            color: #3B82F6;
+        }
+        .main {
+            min-height: calc(100vh - 65px);
+            padding: 24px 0 92px;
+            position: relative;
+        }
+        .bubble-wrap {
+            min-height: 66vh;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+        }
+        .bubble {
+            position: relative;
+            background: #EFF6FF;
+            border: 2px solid #3B82F6;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: float 3s ease-in-out infinite;
+            padding: 12px;
+            color: #1E3A8A;
+        }
+        .bubble:hover {
+            transform: scale(1.08);
+            box-shadow: 0 14px 26px rgba(59, 130, 246, 0.25);
+            z-index: 2;
+        }
+        .emoji {
+            font-size: 28px;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .title {
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.25;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 6px;
+        }
+        .progress-ring {
+            width: 38px;
+            height: 38px;
+        }
+        .ring-track {
+            fill: none;
+            stroke: #BFDBFE;
+            stroke-width: 4;
+        }
+        .ring-bar {
+            fill: none;
+            stroke: #3B82F6;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .tooltip {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 10px);
+            transform: translateX(-50%);
+            background: #0F172A;
+            color: #FFFFFF;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 5px 10px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .bubble:hover .tooltip {
+            opacity: 1;
+        }
+        .empty-state {
+            text-align: center;
+            color: #64748B;
+            font-size: 18px;
+            line-height: 1.8;
+        }
+        .empty-arrow {
+            position: fixed;
+            right: 72px;
+            bottom: 72px;
+            color: #3B82F6;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .fab-wrap {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 9;
+        }
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 1px solid #F59E0B;
+            background: #FBBF24;
+            color: #1F2937;
+            font-size: 24px;
+            line-height: 1;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 22px rgba(245, 158, 11, 0.3);
+        }
+        .fab-tip {
+            position: absolute;
+            right: 66px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #0F172A;
+            color: #FFFFFF;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 6px 10px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .fab-wrap:hover .fab-tip {
+            opacity: 1;
+        }
+        .toast {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #EF4444;
+            color: #FFFFFF;
+            font-size: 14px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
+            display: none;
+            z-index: 10;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        @media (max-width: 900px) {
+            .nav-inner {
+                min-height: auto;
+                padding: 14px 0;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .nav-links {
+                width: 100%;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .bubble-wrap {
+                gap: 12px;
+            }
+            .empty-state {
+                font-size: 16px;
+            }
+            .empty-arrow {
+                right: 68px;
+                bottom: 74px;
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="/landing.html">LearnFlow</a>
+            <nav class="nav-links">
+                <a href="/bubble.html">路线图</a>
+                <a href="/tracker.html">学习记录</a>
+                <a href="/consult.html">规划路径</a>
+            </nav>
+        </div>
+    </header>
+    <main class="main container">
+        <div id="bubble-wrap" class="bubble-wrap"></div>
+    </main>
+    <div id="toast" class="toast">加载失败，请检查后端服务</div>
+    <div class="fab-wrap">
+        <a class="fab" href="/consult.html">＋</a>
+        <div class="fab-tip">从对话开始，生成你的专属学习路径</div>
+    </div>
+    <script>
+        const wrap = document.getElementById('bubble-wrap');
+        const toast = document.getElementById('toast');
+        const emojis = ['🤖', '🧠', '📘', '🛰️', '🧭', '🚀', '🧩', '📚'];
+
+        function showToast() {
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2200);
+        }
+
+        function createProgressRing(completed, total) {
+            const safeTotal = total > 0 ? total : 1;
+            const progress = Math.max(0, Math.min(1, completed / safeTotal));
+            const r = 15;
+            const c = 2 * Math.PI * r;
+            const offset = c * (1 - progress);
+            return `
+                <svg class="progress-ring" viewBox="0 0 40 40" aria-hidden="true">
+                    <circle class="ring-track" cx="20" cy="20" r="${r}"></circle>
+                    <circle class="ring-bar" cx="20" cy="20" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${offset}"></circle>
+                </svg>
+            `;
+        }
+
+        function renderEmpty() {
+            wrap.innerHTML = `
+                <div class="empty-state">
+                    还没有学习路径，从这里开始 ↓
+                </div>
+            `;
+            const arrow = document.createElement('div');
+            arrow.className = 'empty-arrow';
+            arrow.textContent = '↘';
+            document.body.appendChild(arrow);
+        }
+
+        function renderBubbles(paths) {
+            wrap.innerHTML = '';
+            paths.forEach((item, index) => {
+                const total = Number(item.total_nodes || 0);
+                const completed = Number(item.mastered_nodes || 0);
+                const size = Math.min(80 + total * 5, 160);
+                const bubble = document.createElement('button');
+                bubble.type = 'button';
+                bubble.className = 'bubble';
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.animationDelay = `${index * 0.15}s`;
+                bubble.innerHTML = `
+                    <div class="tooltip">已完成${completed}/共${total}节点</div>
+                    <div class="emoji">${emojis[index % emojis.length]}</div>
+                    <div class="title">${item.title || '未命名路径'}</div>
+                    ${createProgressRing(completed, total)}
+                `;
+                bubble.addEventListener('click', () => {
+                    window.location.href = `/map.html?path_id=${encodeURIComponent(item.id)}`;
+                });
+                wrap.appendChild(bubble);
+            });
+        }
+
+        fetch('/get_paths')
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error('fetch failed');
+                }
+                return res.json();
+            })
+            .then((data) => {
+                const paths = Array.isArray(data.paths) ? data.paths : [];
+                if (!paths.length) {
+                    renderEmpty();
+                    return;
+                }
+                renderBubbles(paths);
+            })
+            .catch(() => {
+                renderEmpty();
+                showToast();
+            });
+    </script>
+</body>
+</html>

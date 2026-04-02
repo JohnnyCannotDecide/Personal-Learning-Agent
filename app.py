@@ -109,6 +109,7 @@ inject_user_background()
 
 ADVICE_FILE = os.path.join(os.path.dirname(__file__), "advice.json")
 PATHS_FILE = os.path.join(os.path.dirname(__file__), "paths.json")
+SKILL_TREE_FILE = os.path.join(os.path.dirname(__file__), "skill_tree_agent.json")
 
 def load_advice_map():
     if not os.path.exists(ADVICE_FILE):
@@ -159,6 +160,63 @@ def summarize_path(path_data):
     }
 
 
+def seed_agent_path():
+    if not os.path.exists(SKILL_TREE_FILE):
+        return
+    store = load_paths_data()
+    paths = store.get("paths", {})
+    for existing in paths.values():
+        if not isinstance(existing, dict):
+            continue
+        title = (existing.get("title") or "").lower()
+        if "agent" in title:
+            return
+    try:
+        with open(SKILL_TREE_FILE, "r", encoding="utf-8") as f:
+            tree = json.load(f)
+    except Exception:
+        return
+    raw_nodes = tree.get("nodes", []) if isinstance(tree, dict) else []
+    nodes = []
+    for node in raw_nodes:
+        if not isinstance(node, dict):
+            continue
+        node_id = (node.get("id") or "").strip()
+        if not node_id:
+            continue
+        status = (node.get("status") or "notStarted").strip()
+        if status not in {"notStarted", "learning", "mastered"}:
+            status = "notStarted"
+        nodes.append({
+            "id": node_id,
+            "node_id": node_id,
+            "label": node.get("label") or node_id,
+            "type": node.get("type") or "prerequisite",
+            "status": status,
+            "description": node.get("description") or node.get("criteria") or "",
+            "prerequisites": node.get("prerequisites") if isinstance(node.get("prerequisites"), list) else []
+        })
+    total_nodes = len(nodes)
+    mastered_nodes = sum(1 for n in nodes if n.get("status") == "mastered")
+    learning_nodes = sum(1 for n in nodes if n.get("status") == "learning")
+    progress_percent = round((mastered_nodes / total_nodes) * 100, 1) if total_nodes else 0.0
+    edges = tree.get("edges", []) if isinstance(tree, dict) and isinstance(tree.get("edges"), list) else []
+    paths["agent-learning-001"] = {
+        "title": tree.get("name") or "Agent Learning",
+        "emoji": "🤖",
+        "nodes": nodes,
+        "edges": edges,
+        "total_nodes": total_nodes,
+        "mastered_nodes": mastered_nodes,
+        "learning_nodes": learning_nodes,
+        "progress_percent": progress_percent,
+        "created_at": int(time.time()),
+        "updated_at": int(time.time())
+    }
+    store["paths"] = paths
+    save_paths_data(store)
+
+
 def extract_json_from_text(text):
     if not text:
         return None
@@ -175,6 +233,9 @@ def extract_json_from_text(text):
         return json.loads(snippet)
     except Exception:
         return None
+
+
+seed_agent_path()
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -310,10 +371,14 @@ def get_paths():
         summary = summarize_path(path_data)
         result.append({
             "id": path_id,
+            "path_id": path_id,
             "title": path_data.get("title", "未命名学习路径"),
+            "name": path_data.get("title", "未命名学习路径"),
+            "emoji": path_data.get("emoji", "📚"),
+            "node_count": summary["total_nodes"],
             **summary
         })
-    result.sort(key=lambda x: x["id"], reverse=True)
+    result.sort(key=lambda x: (0 if x["id"] == "agent-learning-001" else 1, -int(store.get("paths", {}).get(x["id"], {}).get("updated_at", 0))))
     return jsonify({"paths": result})
 
 
@@ -469,6 +534,10 @@ def delete_record():
 def skill_map():
     return render_template('map.html')
 
+@app.route('/map.html')
+def skill_map_html():
+    return render_template('map.html')
+
 
 @app.route('/skills/tree', methods=['GET'])
 def skill_tree_data():
@@ -525,10 +594,19 @@ def skill_complete():
 
 @app.route('/tracker')
 def tracker():
-    return render_template('index.html')
+    return render_template('tracker.html')
+
+@app.route('/tracker.html')
+def tracker_html():
+    return render_template('tracker.html')
 
 @app.route('/consult')
 def consult():
+    path_id = (request.args.get("path_id") or "").strip()
+    return render_template('consult.html', path_id=path_id)
+
+@app.route('/consult.html')
+def consult_html():
     path_id = (request.args.get("path_id") or "").strip()
     return render_template('consult.html', path_id=path_id)
 
@@ -536,9 +614,22 @@ def consult():
 def landing():
     return render_template('landing.html')
 
+@app.route('/landing.html')
+def landing_html():
+    return render_template('landing.html')
+
+@app.route('/bubble')
+def bubble():
+    return render_template('bubble.html')
+
+@app.route('/bubble.html')
+def bubble_html():
+    return render_template('bubble.html')
+
 @app.route('/')
 def index():
     return redirect(url_for('landing'))
 
 if __name__ == '__main__':
+    seed_agent_path()
     app.run(debug=True, port=5000)

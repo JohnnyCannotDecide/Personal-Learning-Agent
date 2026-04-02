@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习记录</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #F8FAFC;
+            color: #0F172A;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+        a { color: inherit; text-decoration: none; }
+        .container {
+            width: min(1120px, 92vw);
+            margin: 0 auto;
+        }
+        .nav {
+            border-bottom: 1px solid #E2E8F0;
+            background: #FFFFFF;
+        }
+        .nav-inner {
+            min-height: 64px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: #3B82F6;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 15px;
+        }
+        .nav-links a {
+            color: #334155;
+            font-weight: 600;
+        }
+        .nav-links a:hover { color: #3B82F6; }
+        .main {
+            padding: 18px 0 26px;
+        }
+        .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .title {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+        }
+        .add-btn {
+            border: none;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 14px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .timeline-wrap {
+            position: relative;
+            padding-left: 28px;
+            min-height: 60vh;
+        }
+        .timeline-wrap::before {
+            content: "";
+            position: absolute;
+            left: 9px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #3B82F6;
+        }
+        .item {
+            position: relative;
+            margin-bottom: 12px;
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 0.26s ease, transform 0.26s ease;
+        }
+        .item.removing {
+            opacity: 0;
+            transform: translateX(28px);
+        }
+        .dot {
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #93C5FD;
+            background: #FFFFFF;
+        }
+        .dot.latest {
+            border-color: #3B82F6;
+            background: #3B82F6;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59,130,246,.45); }
+            70% { box-shadow: 0 0 0 10px rgba(59,130,246,0); }
+            100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+        }
+        .card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+            border: 1px solid #E2E8F0;
+        }
+        .date-tag {
+            display: inline-block;
+            background: #EFF6FF;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 12px;
+            color: #1E40AF;
+            margin-bottom: 8px;
+        }
+        .item-title {
+            margin: 0 0 6px;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .item-content {
+            margin: 0;
+            color: #475569;
+            font-size: 14px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .expand {
+            border: none;
+            background: transparent;
+            color: #2563EB;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 6px;
+            font-size: 13px;
+        }
+        .delete-row {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .delete-btn {
+            border: 1px solid #FECACA;
+            background: #FFFFFF;
+            color: #DC2626;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background: #FEE2E2;
+        }
+        .empty {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            color: #64748B;
+        }
+        .empty-btn {
+            border: none;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 14px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.36);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 16px;
+        }
+        .overlay.show { display: flex; }
+        .modal {
+            width: min(480px, 100%);
+            border-radius: 16px;
+            background: #FFFFFF;
+            padding: 16px;
+            border: 1px solid #E2E8F0;
+        }
+        .modal h3 {
+            margin: 0 0 10px;
+            font-size: 20px;
+        }
+        .field {
+            margin-bottom: 10px;
+        }
+        .field input, .field textarea {
+            width: 100%;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+        }
+        .field textarea { min-height: 120px; resize: vertical; }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .btn-secondary, .btn-primary {
+            border: none;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 14px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .btn-secondary { background: #E2E8F0; color: #0F172A; }
+        .btn-primary { background: #3B82F6; color: #FFFFFF; }
+        .fade-in {
+            animation: fadeSlide 0.24s ease;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 900px) {
+            .nav-inner {
+                min-height: auto;
+                padding: 14px 0;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .nav-links {
+                width: 100%;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="/landing.html">LearnFlow</a>
+            <nav class="nav-links">
+                <a href="/bubble.html">路线图</a>
+                <a href="/tracker.html">学习记录</a>
+                <a href="/consult.html">规划路径</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container main">
+        <div class="head">
+            <h1 class="title">学习记录</h1>
+            <button id="add-btn" class="add-btn">+ 新增记录</button>
+        </div>
+        <div id="timeline-wrap" class="timeline-wrap"></div>
+    </main>
+
+    <div id="overlay" class="overlay">
+        <div class="modal">
+            <h3>新增学习记录</h3>
+            <div class="field"><input id="date-input" type="date"></div>
+            <div class="field"><input id="title-input" type="text" placeholder="标题（必填）"></div>
+            <div class="field"><textarea id="content-input" placeholder="内容"></textarea></div>
+            <div class="modal-actions">
+                <button id="cancel-btn" class="btn-secondary">取消</button>
+                <button id="save-btn" class="btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const wrap = document.getElementById('timeline-wrap');
+        const overlay = document.getElementById('overlay');
+        const dateInput = document.getElementById('date-input');
+        const titleInput = document.getElementById('title-input');
+        const contentInput = document.getElementById('content-input');
+        let timelineData = [];
+
+        function escapeHtml(text) {
+            return String(text)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function todayString() {
+            const d = new Date();
+            const m = `${d.getMonth() + 1}`.padStart(2, '0');
+            const day = `${d.getDate()}`.padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        function openModal() {
+            overlay.classList.add('show');
+            dateInput.value = todayString();
+            titleInput.value = '';
+            contentInput.value = '';
+        }
+
+        function closeModal() {
+            overlay.classList.remove('show');
+        }
+
+        function contentView(content) {
+            const raw = content || '';
+            if (raw.length <= 100) {
+                return `<p class="item-content">${escapeHtml(raw)}</p>`;
+            }
+            const short = raw.slice(0, 100);
+            return `<p class="item-content" data-full="${escapeHtml(raw)}" data-short="${escapeHtml(short)}">${escapeHtml(short)}...<button class="expand" type="button">展开</button></p>`;
+        }
+
+        async function deleteItem(index, el) {
+            const res = await fetch('/record', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index })
+            });
+            if (!res.ok) return;
+            el.classList.add('removing');
+            setTimeout(() => el.remove(), 260);
+        }
+
+        function bindExpand() {
+            wrap.querySelectorAll('.expand').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    const p = e.target.closest('.item-content');
+                    const full = p.getAttribute('data-full') || '';
+                    p.innerHTML = escapeHtml(full);
+                });
+            });
+        }
+
+        function render() {
+            if (!timelineData.length) {
+                wrap.innerHTML = `
+                    <div class="empty">
+                        <div>还没有学习记录</div>
+                        <button class="empty-btn" id="empty-start-btn">开始记录</button>
+                    </div>
+                `;
+                document.getElementById('empty-start-btn').addEventListener('click', openModal);
+                return;
+            }
+            wrap.innerHTML = timelineData.map((item, idx) => `
+                <article class="item fade-in" data-index="${item.original_idx}">
+                    <span class="dot ${idx === 0 ? 'latest' : ''}"></span>
+                    <div class="card">
+                        <span class="date-tag">${escapeHtml(item.date || '')}</span>
+                        <h3 class="item-title">${escapeHtml(item.title || '')}</h3>
+                        ${contentView(item.content || '')}
+                        <div class="delete-row">
+                            <button class="delete-btn" type="button">删除</button>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+
+            wrap.querySelectorAll('.delete-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    const itemEl = e.target.closest('.item');
+                    const index = Number(itemEl.getAttribute('data-index'));
+                    deleteItem(index, itemEl);
+                });
+            });
+            bindExpand();
+        }
+
+        async function loadTimeline() {
+            const res = await fetch('/timeline');
+            const data = await res.json();
+            timelineData = Array.isArray(data) ? data : [];
+            render();
+        }
+
+        async function saveRecord() {
+            const payload = {
+                date: dateInput.value || todayString(),
+                title: titleInput.value.trim(),
+                content: contentInput.value.trim()
+            };
+            if (!payload.title) return;
+            const res = await fetch('/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) return;
+            closeModal();
+            await loadTimeline();
+        }
+
+        document.getElementById('add-btn').addEventListener('click', openModal);
+        document.getElementById('cancel-btn').addEventListener('click', closeModal);
+        document.getElementById('save-btn').addEventListener('click', saveRecord);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal();
+        });
+        loadTimeline();
+    </script>
+</body>
+</html>

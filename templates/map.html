@@ -3,936 +3,818 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent学习地图</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>路径详情</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <style>
-        :root {
-            --bg-primary: #FAFAFA;
-            --bg-card: #FFFFFF;
-            --text-primary: #1A1A2E;
-            --text-secondary: #6B7280;
-            --brand-color: #3B82F6;
-            --brand-color-dark: #1D4ED8;
-            --brand-color-light: #EFF6FF;
-            --brand-color-mid: #BFDBFE;
-            --accent-yellow: #FBBF24;
-            --accent-yellow-light: #FEF9C3;
-            --border-color: #E5E7EB;
-        }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
-            overflow: hidden;
-            line-height: 1.6;
+            background: #F8FAFC;
+            color: #0F172A;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
         }
-        #tree-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
-        #tree-container:active { cursor: grabbing; }
-        .node {
-            position: absolute;
-            width: 148px;
-            height: 56px;
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            height: 64px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 12px;
+            padding: 0 18px;
+        }
+        .back-link {
+            justify-self: start;
+            color: #1D4ED8;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .path-title {
+            font-size: 18px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+        .progress-pill {
+            justify-self: end;
+            background: linear-gradient(90deg, #3B82F6, #1D4ED8);
+            color: #FFFFFF;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #graph-wrap {
+            position: fixed;
+            inset: 64px 0 64px 0;
+        }
+        #graph {
+            width: 100%;
+            height: 100%;
+        }
+        .node-circle {
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        .node-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+        .node-badge {
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .node-center-icon {
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .learning-pulse {
+            transform-origin: center;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { stroke-width: 2; }
+            50% { stroke-width: 6; }
+            100% { stroke-width: 2; }
+        }
+        #tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: #0F172A;
+            color: #FFFFFF;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 7px 10px;
+            opacity: 0;
+            z-index: 30;
+            transition: opacity 0.12s ease;
+        }
+        #drawer-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.28);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 24;
+        }
+        #drawer-mask.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #drawer {
+            position: fixed;
+            top: 64px;
+            right: -320px;
+            width: 320px;
+            height: calc(100vh - 128px);
+            background: #FFFFFF;
+            border-left: 1px solid #E2E8F0;
+            padding: 18px 16px;
+            transition: right 0.3s ease;
+            z-index: 25;
+            overflow-y: auto;
+        }
+        #drawer.show { right: 0; }
+        .drawer-title {
+            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .chip {
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #EFF6FF;
+            color: #1D4ED8;
+        }
+        .desc {
+            color: #334155;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 14px;
+        }
+        .sub-title {
+            font-size: 13px;
+            color: #64748B;
+            margin-bottom: 6px;
+        }
+        .prereq-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            margin-bottom: 6px;
+            background: #F8FAFC;
+        }
+        .btn {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .btn-blue {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+        .btn-yellow {
+            background: #FBBF24;
+            color: #1F2937;
+        }
+        .bottom-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 64px;
+            border-top: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            padding: 0 12px;
+            z-index: 23;
+        }
+        .bottom-btn {
+            height: 42px;
+            border-radius: 999px;
+            padding: 0 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .bottom-btn.yellow {
+            background: #FBBF24;
+            color: #1F2937;
+        }
+        .bottom-btn.blue {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+        #eval-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+        }
+        #eval-modal.show { display: flex; }
+        .eval-card {
+            width: min(560px, 94vw);
+            max-height: 80vh;
+            overflow-y: auto;
+            background: #FFFFFF;
+            border-radius: 16px;
+            border: 1px solid #E2E8F0;
+            padding: 14px;
+        }
+        .eval-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .eval-close {
+            border: 1px solid #CBD5E1;
+            background: #F8FAFC;
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            cursor: not-allowed;
+        }
+        .eval-close.active {
+            cursor: pointer;
+            background: #FFFFFF;
+        }
+        .eval-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+        }
+        .eval-progress-text {
+            margin: 0 0 6px;
+            color: #334155;
+            font-size: 13px;
+        }
+        .eval-progress {
+            height: 8px;
+            border-radius: 999px;
+            background: #DBEAFE;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .eval-progress > span {
+            display: block;
+            height: 100%;
+            background: #3B82F6;
+            width: 0;
+            transition: width .25s ease;
+        }
+        .eval-chat {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .eval-row { display: flex; }
+        .eval-row.ai { justify-content: flex-start; }
+        .eval-row.user { justify-content: flex-end; }
+        .eval-bubble {
+            max-width: 82%;
+            border-radius: 16px;
+            padding: 9px 11px;
+            font-size: 14px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .eval-bubble.ai { background: #F3F4F6; border-bottom-left-radius: 6px; }
+        .eval-bubble.user { background: #3B82F6; color: #FFFFFF; border-bottom-right-radius: 6px; }
+        .eval-input-wrap {
+            display: flex;
+            gap: 8px;
+        }
+        .eval-input {
+            flex: 1;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+            outline: none;
+        }
+        .eval-send {
+            border: none;
+            border-radius: 10px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            padding: 0 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .eval-result {
+            display: none;
+            border-radius: 12px;
+            padding: 12px;
+            animation: fadeIn .25s ease;
+            margin-bottom: 10px;
+        }
+        .eval-result.mastered { background: #DCFCE7; color: #14532D; }
+        .eval-result.learning { background: #DBEAFE; color: #1E3A8A; }
+        .eval-confirm {
+            display: none;
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .error {
+            height: calc(100vh - 128px);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease-in-out;
-            z-index: 10;
+            color: #EF4444;
+            font-weight: 700;
             text-align: center;
-            padding: 8px 10px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fade-in-up .45s ease-in-out forwards;
-            color: var(--text-primary);
+            padding: 20px;
         }
-        .node:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
-        }
-        .completed {
-            background: linear-gradient(135deg, #ecebff, #f3f4f6);
-            color: var(--brand-color);
-            border-color: #bdb8ff;
-        }
-        .active {
-            background: linear-gradient(135deg, #f3f1ff, #ffffff);
-            color: var(--brand-color);
-            border-color: var(--brand-color);
-        }
-        .locked {
-            background: #f5f5f5;
-            color: #9ca3af;
-            border-color: var(--border-color);
-            cursor: not-allowed;
-        }
-        #svg-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .line {
-            fill: none;
-            stroke: #d1d5db;
-            stroke-width: 1.6;
-            stroke-dasharray: 0;
-            opacity: .95;
-        }
-        .line-completed {
-            stroke: var(--brand-color);
-            stroke-width: 2;
-            opacity: .95;
-            filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.25));
-        }
-        .header-title {
-            position: fixed;
-            top: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            color: var(--text-primary) !important;
-            font-size: 48px !important;
-            font-weight: 700 !important;
-            letter-spacing: -0.5px !important;
-            text-shadow: none;
-            opacity: 0;
-            animation: fade-in-up .45s ease-in-out .05s forwards;
-        }
-        #detail-backdrop {
-            background: rgba(15, 23, 42, 0.18) !important;
-            backdrop-filter: blur(2px);
-        }
-        #detail-panel {
-            background: #ffffff !important;
-            border-left: 1px solid var(--border-color) !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
-            border-top-left-radius: 16px;
-            border-bottom-left-radius: 16px;
-        }
-        #detail-title {
-            font-size: 24px !important;
-            font-weight: 600 !important;
-            color: var(--text-primary) !important;
-        }
-        #detail-status {
-            color: var(--text-secondary) !important;
-            background: #f3f4f6 !important;
-            border: 1px solid var(--border-color);
-        }
-        #detail-criteria {
-            font-size: 16px !important;
-            color: var(--text-primary) !important;
-            line-height: 1.6 !important;
-        }
-        #close-detail-btn {
-            color: var(--text-secondary) !important;
-            transition: all 0.3s ease-in-out;
-        }
-        #close-detail-btn:hover { color: var(--text-primary) !important; }
-        #detail-panel .text-sm {
-            color: var(--text-secondary) !important;
-            font-size: 14px !important;
-        }
-        #detail-panel button {
-            border-radius: 12px !important;
-            transition: all 0.25s ease-in-out !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            border: 1px solid transparent;
-            padding: 10px 20px !important;
-            font-weight: 500 !important;
-        }
-        #detail-panel button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
-        }
-        #detail-panel button:active { transform: translateY(0); box-shadow: none; }
-        #enter-detail-btn,
-        #advice-btn,
-        #start-eval-btn {
-            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
-            color: #fff !important;
-        }
-        #regen-advice-btn {
-            background: #f3f4f6 !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border-color) !important;
-            box-shadow: none !important;
-        }
-        #advice-result {
-            background: #fff !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 16px !important;
-            color: var(--text-primary) !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        }
-        #eval-overlay {
-            background: rgba(250, 250, 250, 0.9) !important;
-            backdrop-filter: blur(4px);
-        }
-        #eval-overlay > div {
-            width: min(980px, 94vw);
-            margin: 24px auto;
-            height: calc(100vh - 48px);
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            overflow: hidden;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fade-in-up .45s ease-in-out forwards;
-        }
-        #eval-overlay > div > div:first-child {
-            border-bottom: 1px solid var(--border-color) !important;
-            background: #fff !important;
-            position: relative;
-            padding-top: 20px !important;
-        }
-        #eval-overlay > div > div:first-child::before {
-            content: "";
-            position: absolute;
-            left: 24px;
-            right: 24px;
-            top: 8px;
-            height: 10px;
-            border-radius: 9999px;
-            background: #eceff4;
-        }
-        #eval-overlay > div > div:first-child::after {
-            content: "";
-            position: absolute;
-            left: 24px;
-            top: 8px;
-            width: 48%;
-            height: 10px;
-            border-radius: 9999px;
-            background: linear-gradient(90deg, var(--brand-color), #5a53e5);
-        }
-        #eval-title {
-            font-size: 32px !important;
-            font-weight: 600 !important;
-            color: var(--brand-color) !important;
-        }
-        #exit-eval-btn {
-            background: #f3f4f6 !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-color);
-            border-radius: 16px !important;
-            transition: all 0.3s ease-in-out !important;
-        }
-        #exit-eval-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
-        #eval-chat {
-            background: #fafafa !important;
-            padding: 24px !important;
-        }
-        #eval-chat > div {
-            border-radius: 16px !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
-            border: 1px solid var(--border-color) !important;
-            transition: all 0.3s ease-in-out !important;
-            line-height: 1.6 !important;
-            font-size: 16px !important;
-        }
-        #eval-chat > .mr-auto {
-            background: #fff !important;
-            color: var(--text-primary) !important;
-        }
-        #eval-chat > .ml-auto {
-            background: linear-gradient(135deg, #edebff, #f3f4f6) !important;
-            color: var(--text-primary) !important;
-            border-color: #c7c4ff !important;
-        }
-        #eval-overlay .border-t {
-            border-top: 1px solid var(--border-color) !important;
-            background: #fff !important;
-        }
-        #mark-completed-btn {
-            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
-            color: #fff !important;
-            border-radius: 16px !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            transition: all 0.3s ease-in-out !important;
-        }
-        #mark-completed-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
-        #eval-input {
-            background: #fff !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 16px !important;
-            color: var(--text-primary) !important;
-            font-size: 16px !important;
-            line-height: 1.6 !important;
-        }
-        #eval-input:focus {
-            border-color: var(--brand-color) !important;
-            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15) !important;
-        }
-        #send-eval-btn {
-            background: linear-gradient(135deg, var(--brand-color), #5a53e5) !important;
-            color: #fff !important;
-            border-radius: 16px !important;
-            transition: all 0.3s ease-in-out !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        }
-        #send-eval-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.12); }
-        .btn-tier-1 { background: #EFF6FF !important; border-color: #3B82F6 !important; color: #1D4ED8 !important; }
-        .btn-tier-1:hover { background: #DBEAFE !important; }
-        .btn-tier-2 { background: #FEF9C3 !important; border-color: #FBBF24 !important; color: #92400E !important; }
-        .btn-tier-2:hover { background: #FDE68A !important; }
-        .btn-tier-3 { background: #DBEAFE !important; border-color: #93C5FD !important; color: #1E40AF !important; }
-        .btn-tier-3:hover { background: #BFDBFE !important; }
-        .btn-tier-4 { background: #FFF7ED !important; border-color: #FCD34D !important; color: #B45309 !important; }
-        .btn-tier-4:hover { background: #FFEDD5 !important; }
-        [data-tooltip] {
-            position: relative;
-        }
-        [data-tooltip]::before,
-        [data-tooltip]::after {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 1200;
-        }
-        [data-tooltip]::before {
-            content: attr(data-tooltip);
-            background: #1A1A2E;
-            color: #FFFFFF;
-            font-size: 13px;
-            border-radius: 8px;
-            padding: 6px 12px;
-            white-space: nowrap;
-            left: 50%;
-            transform: translate(-50%, 4px);
-            bottom: calc(100% + 10px);
-        }
-        [data-tooltip]::after {
-            content: "";
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid #1A1A2E;
-            left: 50%;
-            transform: translate(-50%, 4px);
-            bottom: calc(100% + 4px);
-        }
-        [data-tooltip][data-tooltip-pos="bottom"]::before {
-            bottom: auto;
-            top: calc(100% + 10px);
-            transform: translate(-50%, -4px);
-        }
-        [data-tooltip][data-tooltip-pos="bottom"]::after {
-            bottom: auto;
-            top: calc(100% + 4px);
-            border-top: none;
-            border-bottom: 6px solid #1A1A2E;
-            transform: translate(-50%, -4px);
-        }
-        [data-tooltip].tooltip-visible::before,
-        [data-tooltip].tooltip-visible::after {
-            opacity: 1;
-            transform: translate(-50%, 0);
-        }
-        .stream-skeleton {
-            height: 20px;
-            border-radius: 9999px;
-            background: linear-gradient(90deg, #dbeafe, #bfdbfe, #dbeafe);
-            background-size: 220% 100%;
-            animation: skeleton-move 1.2s linear infinite;
-        }
-        .stream-cursor {
-            display: inline-block;
-            width: 1px;
-            height: 1.1em;
-            background: var(--brand-color);
-            margin-left: 3px;
-            vertical-align: text-bottom;
-            animation: cursor-blink 1s infinite;
-        }
-        .stream-actions {
-            margin-top: 8px;
-            display: none;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-        .stream-actions.show { display: flex; }
-        .stream-mini-btn {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-size: 13px;
-            background: #fff;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.25s ease-in-out;
-        }
-        .stream-mini-btn:hover {
-            background: var(--brand-color-light);
-            color: var(--brand-color-dark);
-            border-color: var(--brand-color-mid);
-        }
-        @keyframes skeleton-move {
-            from { background-position: 100% 0; }
-            to { background-position: -100% 0; }
-        }
-        @keyframes cursor-blink {
-            0%, 45% { opacity: 1; }
-            55%, 100% { opacity: 0; }
-        }
-        .eval-option { background: #F3F4F6; border: 1px solid var(--border-color); border-radius: 16px; }
-        .eval-option.selected { background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; }
-        .eval-option.correct { background: #D1FAE5; border-color: #10b981; color: #065f46; }
-        .eval-option.wrong { background: #FEE2E2; border-color: #ef4444; color: #991b1b; }
-        @keyframes fade-in-up {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @media (max-width: 820px) {
+            .topbar {
+                grid-template-columns: 1fr;
+                height: auto;
+                padding: 10px 12px;
+            }
+            .back-link, .path-title, .progress-pill {
+                justify-self: start;
+                text-align: left;
+            }
+            #graph-wrap {
+                inset: 108px 0 64px 0;
+            }
+            #drawer {
+                top: 108px;
+                width: min(320px, 92vw);
+                right: calc(-1 * min(320px, 92vw));
+                height: calc(100vh - 172px);
+            }
         }
     </style>
 </head>
 <body>
+    <header class="topbar">
+        <a class="back-link" href="/bubble.html">← 返回 bubble.html</a>
+        <div id="path-title" class="path-title">加载中...</div>
+        <div id="progress-pill" class="progress-pill">已完成0 / 共0节点</div>
+    </header>
 
-    <h1 class="header-title text-3xl font-black tracking-widest uppercase italic text-sky-400">
-         Agent 学习地图
-    </h1>
+    <main id="graph-wrap">
+        <svg id="graph"></svg>
+    </main>
+    <div id="tooltip"></div>
 
-    <div id="tree-container">
-        <svg id="svg-layer"></svg>
+    <div id="drawer-mask"></div>
+    <aside id="drawer">
+        <h2 id="drawer-title" class="drawer-title"></h2>
+        <div class="chips">
+            <span id="type-chip" class="chip"></span>
+            <span id="status-chip" class="chip"></span>
         </div>
+        <div id="drawer-desc" class="desc"></div>
+        <div class="sub-title">前置依赖</div>
+        <div id="prereq-list"></div>
+        <a id="learn-btn" class="btn btn-blue" href="#">开始学习</a>
+        <button id="assess-btn" class="btn btn-yellow" style="display:none;">状态判定</button>
+    </aside>
 
-    <div id="detail-overlay" class="fixed inset-0 hidden z-50">
-        <div id="detail-backdrop" class="absolute inset-0 bg-black/50"></div>
-        <aside id="detail-panel" class="absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-slate-900 border-l border-slate-700 shadow-2xl transform translate-x-full transition-transform duration-300 ease-out">
-            <div class="h-full flex flex-col p-6">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <h3 id="detail-title" class="text-xl font-bold text-sky-300"></h3>
-                        <div class="mt-2">
-                            <span id="detail-status" class="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-200"></span>
-                        </div>
-                    </div>
-                    <button id="close-detail-btn" class="text-slate-400 hover:text-white text-lg leading-none px-2">×</button>
-                </div>
-
-                <div class="mt-6">
-                    <div class="text-sm text-slate-400 mb-2">完成标准</div>
-                    <p id="detail-criteria" class="text-sm leading-relaxed text-slate-200 whitespace-pre-line"></p>
-                </div>
-
-                <div class="mt-6">
-                    <button id="enter-detail-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition font-medium hidden">进入详情页</button>
-                </div>
-
-                <div class="mt-3">
-                    <button id="advice-btn" class="w-full bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg transition font-medium">获取学习建议</button>
-                </div>
-                <div class="mt-3">
-                    <button id="start-eval-btn" class="w-full bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg transition font-medium">开始评估</button>
-                </div>
-
-                <div class="mt-4 flex-1 min-h-0">
-                    <div class="text-sm text-slate-400 mb-2">建议结果</div>
-                    <div id="advice-result" class="h-full overflow-y-auto bg-slate-800/70 border border-slate-700 rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap"></div>
-                    <button id="regen-advice-btn" class="mt-2 text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition hidden">重新生成</button>
-                </div>
+    <div id="eval-modal">
+        <div class="eval-card">
+            <div class="eval-head">
+                <h3 id="eval-node-title" class="eval-title"></h3>
+                <button id="eval-close-btn" class="eval-close" type="button">✕</button>
             </div>
-        </aside>
-    </div>
-
-    <div id="eval-overlay" class="fixed inset-0 hidden z-[60] bg-slate-950">
-        <div class="h-full w-full flex flex-col">
-            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                <h2 id="eval-title" class="text-lg font-bold text-sky-300"></h2>
-                <button id="exit-eval-btn" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition">退出评估</button>
+            <div id="eval-progress-text" class="eval-progress-text">第1/4轮对话</div>
+            <div class="eval-progress"><span id="eval-progress-bar"></span></div>
+            <div id="eval-chat" class="eval-chat"></div>
+            <div id="eval-result" class="eval-result"></div>
+            <div id="eval-input-wrap" class="eval-input-wrap">
+                <input id="eval-input" class="eval-input" type="text" placeholder="输入你的回答">
+                <button id="eval-send" class="eval-send" type="button">发送</button>
             </div>
-            <div id="eval-chat" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950"></div>
-            <div class="p-4 border-t border-slate-800 bg-slate-900">
-                <button id="mark-completed-btn" class="w-full mb-3 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition font-medium hidden">标记为已完成</button>
-                <div class="flex gap-3">
-                    <input id="eval-input" type="text" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500" placeholder="输入你的回答，输入“退出”可结束评估">
-                    <button id="send-eval-btn" class="bg-violet-600 hover:bg-violet-500 px-5 py-2 rounded-lg transition font-medium">发送</button>
-                </div>
-            </div>
+            <button id="eval-confirm" class="eval-confirm" type="button">确认并更新状态</button>
         </div>
     </div>
+
+    <footer class="bottom-bar">
+        <a id="consult-btn" class="bottom-btn yellow" href="#">进入咨询，继续规划路径</a>
+        <a class="bottom-btn blue" href="/tracker.html">查看学习记录</a>
+    </footer>
 
     <script>
-        let nodes = [];
-        let edges = [];
-        const statusTextMap = {
-            completed: '已完成',
-            active: '进行中',
-            locked: '未解锁'
-        };
-
-        const container = document.getElementById('tree-container');
-        const svg = document.getElementById('svg-layer');
-        const detailOverlay = document.getElementById('detail-overlay');
-        const detailBackdrop = document.getElementById('detail-backdrop');
-        const detailPanel = document.getElementById('detail-panel');
-        const detailTitle = document.getElementById('detail-title');
-        const detailStatus = document.getElementById('detail-status');
-        const detailCriteria = document.getElementById('detail-criteria');
-        const adviceBtn = document.getElementById('advice-btn');
-        const enterDetailBtn = document.getElementById('enter-detail-btn');
-        const startEvalBtn = document.getElementById('start-eval-btn');
-        const regenAdviceBtn = document.getElementById('regen-advice-btn');
-        const adviceResult = document.getElementById('advice-result');
-        const closeDetailBtn = document.getElementById('close-detail-btn');
-        const evalOverlay = document.getElementById('eval-overlay');
-        const evalTitle = document.getElementById('eval-title');
+        const url = new URL(window.location.href);
+        const pathId = (url.searchParams.get('path_id') || '').trim();
+        const svg = d3.select('#graph');
+        const tooltip = document.getElementById('tooltip');
+        const drawer = document.getElementById('drawer');
+        const drawerMask = document.getElementById('drawer-mask');
+        const pathTitle = document.getElementById('path-title');
+        const progressPill = document.getElementById('progress-pill');
+        const consultBtn = document.getElementById('consult-btn');
+        const assessBtn = document.getElementById('assess-btn');
+        const evalModal = document.getElementById('eval-modal');
+        const evalNodeTitle = document.getElementById('eval-node-title');
+        const evalProgressText = document.getElementById('eval-progress-text');
+        const evalProgressBar = document.getElementById('eval-progress-bar');
         const evalChat = document.getElementById('eval-chat');
         const evalInput = document.getElementById('eval-input');
-        const sendEvalBtn = document.getElementById('send-eval-btn');
-        const exitEvalBtn = document.getElementById('exit-eval-btn');
-        const markCompletedBtn = document.getElementById('mark-completed-btn');
-        let currentNode = null;
+        const evalSend = document.getElementById('eval-send');
+        const evalResult = document.getElementById('eval-result');
+        const evalConfirm = document.getElementById('eval-confirm');
+        const evalCloseBtn = document.getElementById('eval-close-btn');
+        let pathData = null;
+        let nodeMap = new Map();
+        let selectedNode = null;
+        let evalRound = 0;
         let evalHistory = [];
-        let evalPassed = false;
-        let adviceLoadToken = 0;
-        let lastAdviceQuery = '';
-        const buttonTierCycle = ['btn-tier-1', 'btn-tier-2', 'btn-tier-3', 'btn-tier-4'];
+        let evalDone = false;
+        let evalResultStatus = 'learning';
+        let evalResultAdvice = '';
 
-        async function loadSkillTree() {
-            const res = await fetch('/skills/tree');
-            const data = await res.json();
-            nodes = data.nodes || [];
-            edges = data.edges || [];
-            svg.innerHTML = '';
-            container.querySelectorAll('.node').forEach((n) => n.remove());
-            renderNodes();
-            renderEdges();
+        function getTypeStyle(type) {
+            if (type === 'core') return { fill: '#3B82F6', stroke: '#3B82F6', text: '#FFFFFF', width: 2 };
+            if (type === 'advanced') return { fill: '#1D4ED8', stroke: '#1D4ED8', text: '#FFFFFF', width: 2 };
+            if (type === 'optional') return { fill: '#FEF9C3', stroke: '#F59E0B', text: '#92400E', width: 2 };
+            return { fill: '#DBEAFE', stroke: '#3B82F6', text: '#1E3A8A', width: 2 };
         }
 
-        function applyButtonTierCycle() {
-            const btns = [
-                enterDetailBtn,
-                adviceBtn,
-                startEvalBtn,
-                regenAdviceBtn,
-                exitEvalBtn,
-                markCompletedBtn,
-                sendEvalBtn
-            ].filter(Boolean);
-            btns.forEach((btn, idx) => {
-                buttonTierCycle.forEach((tier) => btn.classList.remove(tier));
-                btn.classList.add(buttonTierCycle[idx % buttonTierCycle.length]);
-            });
+        function getStatusText(status, needsAssessment) {
+            if (status === 'mastered') return '已掌握';
+            if (status === 'learning') return '学习中';
+            if (status === 'notStarted' && needsAssessment) return '待判定';
+            return '未开始';
         }
 
-        function initTooltips() {
-            const tooltipText = new Map([
-                [closeDetailBtn, '关闭当前面板'],
-                [enterDetailBtn, '进入节点详情'],
-                [adviceBtn, '生成学习建议'],
-                [startEvalBtn, '开启能力评估'],
-                [regenAdviceBtn, '刷新建议内容'],
-                [exitEvalBtn, '退出评估模式'],
-                [sendEvalBtn, '提交本轮回答'],
-                [markCompletedBtn, '将节点标记完成']
-            ]);
-            tooltipText.forEach((text, el) => {
-                if (!el) return;
-                el.setAttribute('data-tooltip', text);
-                let timer = null;
-                const show = () => {
-                    const rect = el.getBoundingClientRect();
-                    const nearTop = rect.top < 64;
-                    const nearRight = rect.right > window.innerWidth - 20;
-                    const nearLeft = rect.left < 20;
-                    el.setAttribute('data-tooltip-pos', nearTop || nearRight || nearLeft ? 'bottom' : 'top');
-                    timer = setTimeout(() => el.classList.add('tooltip-visible'), 300);
-                };
-                const hide = () => {
-                    clearTimeout(timer);
-                    el.classList.remove('tooltip-visible');
-                };
-                el.addEventListener('mouseenter', show);
-                el.addEventListener('mouseleave', hide);
-                el.addEventListener('blur', hide);
-            });
+        function statusIcon(status, needsAssessment) {
+            if (status === 'mastered') return '✅';
+            if (status === 'learning') return '⚡';
+            if (status === 'notStarted' && needsAssessment) return '❓';
+            return '🔒';
         }
 
-        function renderNodes() {
-            nodes.forEach(node => {
-                const div = document.createElement('div');
-                div.id = node.id;
-                div.className = `node ${node.status}`;
-                div.style.left = node.x + 'px';
-                div.style.top = node.y + 'px';
-                div.innerText = node.label;
-
-                div.onclick = () => {
-                    openDetailPanel(node);
-                };
-
-                container.appendChild(div);
-            });
-        }
-
-        function renderEdges() {
-            edges.forEach(edge => {
-                const fromNode = nodes.find(n => n.id === edge.from);
-                const toNode = nodes.find(n => n.id === edge.to);
-
-                if (fromNode && toNode) {
-                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                    
-                    // 计算起点终点（节点中心）
-                    const x1 = fromNode.x + 140;
-                    const y1 = fromNode.y + 25;
-                    const x2 = toNode.x;
-                    const y2 = toNode.y + 25;
-
-                    // 绘制三次贝塞尔曲线
-                    const cp1x = x1 + (x2 - x1) / 2;
-                    const d = `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp1x} ${y2}, ${x2} ${y2}`;
-                    
-                    path.setAttribute("d", d);
-                    path.setAttribute("class", `line ${fromNode.status === 'completed' && toNode.status !== 'locked' ? 'line-completed' : ''}`);
-                    svg.appendChild(path);
-                }
-            });
-        }
-
-        function setStatusBadge(status) {
-            detailStatus.className = 'text-xs px-2 py-1 rounded-full';
-            if (status === 'completed') {
-                detailStatus.classList.add('bg-emerald-700', 'text-emerald-100');
-            } else if (status === 'active') {
-                detailStatus.classList.add('bg-sky-700', 'text-sky-100');
+        function openDrawer(node) {
+            selectedNode = node;
+            document.getElementById('drawer-title').textContent = node.label || node.id;
+            document.getElementById('type-chip').textContent = node.type || 'prerequisite';
+            document.getElementById('status-chip').textContent = getStatusText(node.status, node.needsAssessment);
+            document.getElementById('drawer-desc').textContent = node.description || '暂无描述';
+            document.getElementById('learn-btn').href = `/consult.html?path_id=${encodeURIComponent(pathId)}&node_id=${encodeURIComponent(node.id)}`;
+            assessBtn.style.display = node.status === 'notStarted' && node.needsAssessment ? 'block' : 'none';
+            const prereqList = document.getElementById('prereq-list');
+            const prereq = (node.prerequisites || []).map((id) => nodeMap.get(id)).filter(Boolean);
+            if (!prereq.length) {
+                prereqList.innerHTML = '<div class="prereq-item"><span>无前置依赖</span><span>—</span></div>';
             } else {
-                detailStatus.classList.add('bg-slate-700', 'text-slate-200');
+                prereqList.innerHTML = prereq.map((n) => `<div class="prereq-item"><span>${n.label}</span><span>${statusIcon(n.status, n.needsAssessment)}</span></div>`).join('');
             }
-            detailStatus.innerText = statusTextMap[status] || status;
+            drawer.classList.add('show');
+            drawerMask.classList.add('show');
         }
 
-        function openDetailPanel(node) {
-            currentNode = node;
-            detailTitle.innerText = node.label;
-            setStatusBadge(node.status);
-            detailCriteria.innerText = node.criteria || '该节点暂无完成标准描述。';
-            adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
-            regenAdviceBtn.classList.add('hidden');
-            adviceBtn.disabled = false;
-            adviceBtn.innerText = '获取学习建议';
-            if (node.link) {
-                enterDetailBtn.classList.remove('hidden');
-            } else {
-                enterDetailBtn.classList.add('hidden');
-            }
-            if (node.status === 'locked') {
-                startEvalBtn.classList.add('hidden');
-            } else if (node.status === 'completed') {
-                startEvalBtn.classList.remove('hidden');
-                startEvalBtn.innerText = '复习巩固';
-            } else {
-                startEvalBtn.classList.remove('hidden');
-                startEvalBtn.innerText = '开始评估';
-            }
-            detailOverlay.classList.remove('hidden');
+        function closeDrawer() {
+            drawer.classList.remove('show');
+            drawerMask.classList.remove('show');
+        }
+
+        function renderGraph(data) {
+            const nodes = (data.nodes || []).map((d) => ({ ...d }));
+            const links = (data.edges || []).map((e) => ({ source: e.from, target: e.to }));
+            nodeMap = new Map(nodes.map((n) => [n.id, n]));
+            const width = window.innerWidth;
+            const height = Math.max(520, window.innerHeight - 128);
+            svg.selectAll('*').remove();
+            svg.style('opacity', 0);
+            svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+            svg.append('defs').append('marker')
+                .attr('id', 'arrow-blue')
+                .attr('viewBox', '0 0 10 10')
+                .attr('refX', 16)
+                .attr('refY', 5)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto-start-reverse')
+                .append('path')
+                .attr('d', 'M 0 0 L 10 5 L 0 10 z')
+                .attr('fill', '#3B82F6');
+
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('stroke-width', 2)
+                .attr('stroke', (d) => {
+                    const source = nodeMap.get(d.source.id || d.source);
+                    return source && source.status === 'mastered' ? '#3B82F6' : '#CBD5E1';
+                })
+                .attr('stroke-dasharray', (d) => {
+                    const source = nodeMap.get(d.source.id || d.source);
+                    return source && source.status === 'mastered' ? null : '5,5';
+                })
+                .attr('marker-end', (d) => {
+                    const source = nodeMap.get(d.source.id || d.source);
+                    return source && source.status === 'mastered' ? 'url(#arrow-blue)' : null;
+                });
+
+            const node = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragStarted)
+                    .on('drag', dragged)
+                    .on('end', dragEnded))
+                .on('click', (_, d) => openDrawer(d))
+                .on('mousemove', (event, d) => {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.left = `${event.clientX + 12}px`;
+                    tooltip.style.top = `${event.clientY - 10}px`;
+                    tooltip.textContent = `${d.label} · ${getStatusText(d.status, d.needsAssessment)}`;
+                })
+                .on('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+
+            node.append('circle')
+                .attr('r', 40)
+                .attr('class', (d) => d.status === 'learning' ? 'node-circle learning-pulse' : 'node-circle')
+                .attr('fill', (d) => getTypeStyle(d.type).fill)
+                .attr('stroke', (d) => {
+                    if (d.status === 'mastered') return '#22C55E';
+                    if (d.status === 'learning') return '#3B82F6';
+                    if (d.status === 'notStarted' && d.needsAssessment) return '#F59E0B';
+                    return getTypeStyle(d.type).stroke;
+                })
+                .attr('stroke-width', (d) => {
+                    if (d.status === 'mastered') return 3;
+                    if (d.status === 'notStarted' && d.needsAssessment) return 3;
+                    return getTypeStyle(d.type).width;
+                })
+                .attr('opacity', (d) => d.status === 'notStarted' ? 0.5 : 1);
+
+            node.append('text')
+                .attr('class', 'node-label')
+                .attr('fill', (d) => getTypeStyle(d.type).text)
+                .attr('y', 2)
+                .text((d) => (d.label || '').slice(0, 8))
+                .attr('opacity', (d) => d.status === 'notStarted' ? 0.8 : 1);
+
+            node.filter((d) => d.status === 'mastered').append('text')
+                .attr('class', 'node-badge')
+                .attr('x', 24)
+                .attr('y', -22)
+                .text('✅');
+
+            node.filter((d) => d.status === 'learning').append('text')
+                .attr('class', 'node-badge')
+                .attr('x', 24)
+                .attr('y', -22)
+                .text('⚡');
+
+            node.filter((d) => d.status === 'notStarted' && d.needsAssessment).append('text')
+                .attr('class', 'node-center-icon')
+                .attr('y', 28)
+                .text('❓');
+
+            node.filter((d) => d.status === 'notStarted' && !d.needsAssessment).append('text')
+                .attr('class', 'node-center-icon')
+                .attr('y', 28)
+                .text('🔒');
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id((d) => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-520))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collide', d3.forceCollide(64))
+                .on('tick', () => {
+                    link
+                        .attr('x1', (d) => d.source.x)
+                        .attr('y1', (d) => d.source.y)
+                        .attr('x2', (d) => d.target.x)
+                        .attr('y2', (d) => d.target.y);
+                    node.attr('transform', (d) => `translate(${d.x},${d.y})`);
+                });
             requestAnimationFrame(() => {
-                detailPanel.classList.remove('translate-x-full');
+                svg.transition().duration(260).style('opacity', 1);
             });
-            const currentToken = ++adviceLoadToken;
-            loadSavedAdviceOnOpen(node, currentToken);
-        }
 
-        function closeDetailPanel() {
-            detailPanel.classList.add('translate-x-full');
-            setTimeout(() => {
-                detailOverlay.classList.add('hidden');
-            }, 300);
-        }
-
-        async function generateAndSaveAdvice() {
-            if (!currentNode) return;
-            const query = `请基于我的学习记录，围绕“${currentNode.label}”给出3条可执行建议，并附一个自测题。`;
-            lastAdviceQuery = query;
-            adviceBtn.disabled = true;
-            adviceBtn.innerText = '生成中...';
-            adviceResult.innerHTML = `
-                <div class="stream-skeleton"></div>
-                <span class="stream-text"></span><span class="stream-cursor"></span>
-                <div class="stream-actions">
-                    <button class="stream-mini-btn" id="copy-advice-btn">复制</button>
-                    <button class="stream-mini-btn" id="regen-advice-inline-btn">重新生成</button>
-                </div>
-            `;
-            const streamText = adviceResult.querySelector('.stream-text');
-            const streamSkeleton = adviceResult.querySelector('.stream-skeleton');
-            const streamCursor = adviceResult.querySelector('.stream-cursor');
-            const streamActions = adviceResult.querySelector('.stream-actions');
-            const res = await fetch('/chat_stream', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({query})
-            });
-            if (!res.ok || !res.body) {
-                adviceResult.innerText = '请求失败，请检查服务状态后重试。';
-                adviceBtn.disabled = false;
-                adviceBtn.innerText = '获取学习建议';
-                return;
+            function dragStarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
             }
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let buffer = '';
-            let fullText = '';
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const events = buffer.split('\n\n');
-                buffer = events.pop() || '';
-                for (const evt of events) {
-                    const lines = evt.split('\n');
-                    for (const line of lines) {
-                        if (!line.startsWith('data: ')) continue;
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        if (streamSkeleton && streamSkeleton.style.display !== 'none') {
-                            streamSkeleton.style.display = 'none';
-                        }
-                        fullText += data;
-                        if (streamText) streamText.textContent = fullText;
-                        adviceResult.scrollTop = adviceResult.scrollHeight;
-                    }
-                }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
             }
-            if (streamCursor) streamCursor.style.display = 'none';
-            if (streamActions) streamActions.classList.add('show');
-            const copyBtn = document.getElementById('copy-advice-btn');
-            const regenInlineBtn = document.getElementById('regen-advice-inline-btn');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', async () => {
-                    try {
-                        await navigator.clipboard.writeText(fullText);
-                        copyBtn.textContent = '已复制';
-                        setTimeout(() => copyBtn.textContent = '复制', 1200);
-                    } catch (_) {}
-                });
-            }
-            if (regenInlineBtn) {
-                regenInlineBtn.addEventListener('click', async () => {
-                    await generateAndSaveAdvice();
-                });
-            }
-            await fetch('/save_advice', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({node_id: currentNode.id, advice: fullText})
-            });
-            adviceBtn.disabled = false;
-            adviceBtn.innerText = '获取学习建议';
-            regenAdviceBtn.classList.remove('hidden');
-        }
-
-        async function getLearningAdvice(forceRegenerate = false) {
-            if (!currentNode) return;
-            adviceBtn.disabled = true;
-            adviceBtn.innerText = '获取中...';
-            try {
-                if (!forceRegenerate) {
-                    const cachedRes = await fetch(`/get_advice?node_id=${encodeURIComponent(currentNode.id)}`);
-                    const cachedData = await cachedRes.json();
-                    if (cachedData.found && cachedData.advice) {
-                        adviceResult.innerText = cachedData.advice;
-                        regenAdviceBtn.classList.remove('hidden');
-                        return;
-                    }
-                }
-                await generateAndSaveAdvice();
-            } catch (error) {
-                adviceResult.innerText = '请求失败，请检查服务状态后重试。';
-            } finally {
-                if (!adviceBtn.disabled) {
-                    adviceBtn.disabled = false;
-                    adviceBtn.innerText = '获取学习建议';
-                }
+            function dragEnded(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
             }
         }
 
-        async function loadSavedAdviceOnOpen(node, token) {
-            try {
-                const cachedRes = await fetch(`/get_advice?node_id=${encodeURIComponent(node.id)}`);
-                const cachedData = await cachedRes.json();
-                if (token !== adviceLoadToken || !currentNode || currentNode.id !== node.id) return;
-                if (cachedData.found && cachedData.advice) {
-                    adviceResult.innerText = cachedData.advice;
-                    regenAdviceBtn.classList.remove('hidden');
-                } else {
-                    adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
-                    regenAdviceBtn.classList.add('hidden');
-                }
-            } catch (error) {
-                if (token !== adviceLoadToken) return;
-                adviceResult.innerText = '点击“获取学习建议”，系统会基于你的学习记录返回针对性建议。';
-                regenAdviceBtn.classList.add('hidden');
-            }
+        function renderTop(data) {
+            const title = data.title || '未命名路径';
+            const total = (data.nodes || []).length;
+            const completed = (data.nodes || []).filter((n) => n.status === 'mastered').length;
+            pathTitle.textContent = title;
+            progressPill.textContent = `已完成${completed} / 共${total}节点`;
+            consultBtn.href = `/consult.html?path_id=${encodeURIComponent(pathId)}`;
         }
 
-        function appendEvalMessage(role, text) {
-            const div = document.createElement('div');
-            div.className = role === 'assistant'
-                ? 'max-w-[80%] mr-auto bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm leading-relaxed'
-                : 'max-w-[80%] ml-auto bg-violet-900/60 border border-violet-700 rounded-lg p-3 text-sm leading-relaxed';
-            div.textContent = text;
-            evalChat.appendChild(div);
+        function appendEvalBubble(role, text) {
+            const row = document.createElement('div');
+            row.className = `eval-row ${role}`;
+            const bubble = document.createElement('div');
+            bubble.className = `eval-bubble ${role}`;
+            bubble.textContent = text;
+            row.appendChild(bubble);
+            evalChat.appendChild(row);
             evalChat.scrollTop = evalChat.scrollHeight;
-            return div;
         }
 
-        async function streamTextToElement(el, text) {
-            el.innerHTML = `<div class="stream-skeleton"></div><span class="stream-cursor"></span>`;
-            const skeleton = el.querySelector('.stream-skeleton');
-            const cursor = el.querySelector('.stream-cursor');
-            const content = document.createElement('span');
-            content.style.whiteSpace = 'pre-wrap';
-            content.style.wordBreak = 'break-word';
-            el.prepend(content);
-            for (const ch of text) {
-                if (skeleton && skeleton.style.display !== 'none') {
-                    skeleton.style.display = 'none';
-                }
-                content.textContent += ch;
-                evalChat.scrollTop = evalChat.scrollHeight;
-                await new Promise((resolve) => setTimeout(resolve, 8));
+        function updateEvalProgress() {
+            const showRound = Math.max(1, Math.min(evalRound + 1, 4));
+            evalProgressText.textContent = `第${showRound}/4轮对话`;
+            evalProgressBar.style.width = `${(showRound / 4) * 100}%`;
+        }
+
+        function parseEvalResult(text) {
+            if (text.includes('[RESULT:mastered]')) return 'mastered';
+            if (text.includes('[RESULT:learning]')) return 'learning';
+            return '';
+        }
+
+        function openEvalModal() {
+            if (!selectedNode) return;
+            evalRound = 0;
+            evalHistory = [];
+            evalDone = false;
+            evalResultStatus = 'learning';
+            evalResultAdvice = '';
+            evalChat.innerHTML = '';
+            evalResult.style.display = 'none';
+            evalConfirm.style.display = 'none';
+            document.getElementById('eval-input-wrap').style.display = 'flex';
+            evalCloseBtn.classList.remove('active');
+            evalCloseBtn.style.cursor = 'not-allowed';
+            evalNodeTitle.textContent = selectedNode.label || selectedNode.id;
+            updateEvalProgress();
+            evalModal.classList.add('show');
+            sendEvaluateTurn('');
+        }
+
+        function finishEvaluation(status, adviceText) {
+            evalDone = true;
+            evalResultStatus = status || 'learning';
+            evalResultAdvice = adviceText || '';
+            document.getElementById('eval-input-wrap').style.display = 'none';
+            evalResult.className = `eval-result ${evalResultStatus}`;
+            if (evalResultStatus === 'mastered') {
+                evalResult.innerHTML = `✓ 恭喜！你已基本掌握该节点\n${evalResultAdvice}`;
+            } else {
+                evalResult.innerHTML = `📖 建议继续学习\n${evalResultAdvice}`;
             }
-            if (cursor) cursor.style.display = 'none';
+            evalResult.style.display = 'block';
+            evalConfirm.style.display = 'block';
+            evalCloseBtn.classList.add('active');
+            evalCloseBtn.style.cursor = 'pointer';
         }
 
-        function closeEvalOverlay() {
-            evalOverlay.classList.add('hidden');
-        }
-
-        async function requestEvaluation(userAnswer) {
-            if (!currentNode) return;
-            sendEvalBtn.disabled = true;
-            sendEvalBtn.innerText = '发送中...';
+        async function sendEvaluateTurn(message) {
+            if (!selectedNode || evalDone) return;
+            if (message) {
+                appendEvalBubble('user', message);
+                evalHistory.push({ role: 'user', content: message });
+            }
+            evalSend.disabled = true;
             try {
                 const res = await fetch('/evaluate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        node_id: currentNode.id,
+                        node_name: selectedNode.label,
+                        message,
                         history: evalHistory,
-                        user_answer: userAnswer
+                        user_answer: message
                     })
                 });
                 const data = await res.json();
-                const reply = data.response || '评估服务暂无返回，请稍后重试。';
+                const reply = data.response || '评估服务暂无返回';
+                appendEvalBubble('ai', reply.replace('[RESULT:mastered]', '').replace('[RESULT:learning]', '').trim());
                 evalHistory.push({ role: 'assistant', content: reply });
-                const bubble = appendEvalMessage('assistant', '');
-                await streamTextToElement(bubble, reply);
-                evalPassed = !!data.passed;
-                if (evalPassed) {
-                    markCompletedBtn.classList.remove('hidden');
-                }
-            } catch (error) {
-                appendEvalMessage('assistant', '评估请求失败，请检查服务状态后重试。');
-            } finally {
-                sendEvalBtn.disabled = false;
-                sendEvalBtn.innerText = '发送';
-            }
-        }
-
-        function openEvalOverlay() {
-            if (!currentNode) return;
-            evalHistory = [];
-            evalPassed = false;
-            evalTitle.innerText = `${currentNode.label} · 评估模式`;
-            evalChat.innerHTML = '';
-            evalInput.value = '';
-            markCompletedBtn.classList.add('hidden');
-            evalOverlay.classList.remove('hidden');
-            requestEvaluation('');
-            setTimeout(() => evalInput.focus(), 50);
-        }
-
-        async function sendEvalMessage() {
-            const text = evalInput.value.trim();
-            if (!text) return;
-            evalInput.value = '';
-            if (text === '退出') {
-                closeEvalOverlay();
-                return;
-            }
-            evalHistory.push({ role: 'user', content: text });
-            appendEvalMessage('user', text);
-            await requestEvaluation(text);
-        }
-
-        function markCurrentNodeCompleted() {
-            if (!currentNode) return;
-            fetch('/skills/complete', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({node_id: currentNode.id})
-            }).then(async (res) => {
-                if (!res.ok) {
-                    appendEvalMessage('assistant', '标记失败，请稍后重试。');
+                const parsed = parseEvalResult(reply);
+                evalRound += 1;
+                updateEvalProgress();
+                if (parsed) {
+                    finishEvaluation(parsed, reply.replace('[RESULT:mastered]', '').replace('[RESULT:learning]', '').trim());
                     return;
                 }
-                await loadSkillTree();
-                const refreshed = nodes.find(n => n.id === currentNode.id);
-                if (refreshed) {
-                    currentNode = refreshed;
-                    setStatusBadge(currentNode.status);
+                if (evalRound >= 4) {
+                    finishEvaluation('learning', reply);
                 }
-                closeEvalOverlay();
-            }).catch(() => {
-                appendEvalMessage('assistant', '标记失败，请检查服务状态后重试。');
-            });
+            } catch (_) {
+                appendEvalBubble('ai', '评估请求失败，请稍后重试。');
+                evalRound = Math.min(4, evalRound + 1);
+                updateEvalProgress();
+                if (evalRound >= 4) finishEvaluation('learning', '建议稍后重试评估流程。');
+            } finally {
+                evalSend.disabled = false;
+            }
         }
 
-        detailBackdrop.addEventListener('click', closeDetailPanel);
-        detailOverlay.addEventListener('click', (event) => {
-            if (event.target === detailOverlay) {
-                closeDetailPanel();
-            }
+        async function confirmEvalResult() {
+            if (!selectedNode || !pathId) return;
+            const newStatus = evalResultStatus === 'mastered' ? 'mastered' : 'learning';
+            const res = await fetch('/update_node_status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path_id: pathId,
+                    node_id: selectedNode.id,
+                    new_status: newStatus
+                })
+            });
+            if (!res.ok) return;
+            evalModal.classList.remove('show');
+            closeDrawer();
+            const next = await fetch(`/get_path/${encodeURIComponent(pathId)}`);
+            if (!next.ok) return;
+            const data = await next.json();
+            pathData = data;
+            renderTop(data);
+            renderGraph(data);
+        }
+
+        function renderError(text) {
+            document.getElementById('graph-wrap').innerHTML = `<div class="error">${text}</div>`;
+        }
+
+        if (!pathId) {
+            renderError('缺少 path_id，请从 bubble 页面进入。');
+        } else {
+            fetch(`/get_path/${encodeURIComponent(pathId)}`)
+                .then((res) => {
+                    if (!res.ok) throw new Error('load failed');
+                    return res.json();
+                })
+                .then((data) => {
+                    pathData = data;
+                    renderTop(data);
+                    renderGraph(data);
+                })
+                .catch(() => {
+                    renderError('路径加载失败，请检查后端服务或路径是否存在。');
+                });
+        }
+
+        drawerMask.addEventListener('click', closeDrawer);
+        assessBtn.addEventListener('click', openEvalModal);
+        evalSend.addEventListener('click', () => {
+            const text = evalInput.value.trim();
+            if (!text || evalDone) return;
+            evalInput.value = '';
+            sendEvaluateTurn(text);
         });
-        detailPanel.addEventListener('click', (event) => event.stopPropagation());
-        closeDetailBtn.addEventListener('click', closeDetailPanel);
-        adviceBtn.addEventListener('click', getLearningAdvice);
-        regenAdviceBtn.addEventListener('click', () => getLearningAdvice(true));
-        startEvalBtn.addEventListener('click', openEvalOverlay);
-        enterDetailBtn.addEventListener('click', () => {
-            if (currentNode && currentNode.link) {
-                window.location.href = currentNode.link;
-            }
-        });
-        exitEvalBtn.addEventListener('click', closeEvalOverlay);
-        sendEvalBtn.addEventListener('click', sendEvalMessage);
         evalInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                sendEvalMessage();
+                const text = evalInput.value.trim();
+                if (!text || evalDone) return;
+                evalInput.value = '';
+                sendEvaluateTurn(text);
             }
         });
-        markCompletedBtn.addEventListener('click', markCurrentNodeCompleted);
-
-        // 简单的平移拖拽功能
-        let isDragging = false;
-        let startX, startY, scrollLeft, scrollTop;
-
-        container.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.pageX;
-            startY = e.pageY;
+        evalConfirm.addEventListener('click', confirmEvalResult);
+        evalCloseBtn.addEventListener('click', () => {
+            if (!evalDone) return;
+            evalModal.classList.remove('show');
         });
-        window.addEventListener('mouseup', () => isDragging = false);
-        applyButtonTierCycle();
-        initTooltips();
-        loadSkillTree();
+        window.addEventListener('resize', () => {
+            if (pathData) renderGraph(pathData);
+        });
     </script>
 </body>
 </html>

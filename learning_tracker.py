@@ -24,7 +24,7 @@ class PersonalBrainAgent:
         load_dotenv()
 
         self.llm = ChatOpenAI(
-            model="google/gemma-3-12b-it:free",
+            model="qwen/qwen3.6-plus-preview:free",
             api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0.7,

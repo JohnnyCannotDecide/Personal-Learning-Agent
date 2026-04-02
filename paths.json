@@ -1,0 +1,137 @@
+{
+  "paths": {
+    "agent-learning-001": {
+      "title": "Agent 学习路线",
+      "emoji": "🤖",
+      "nodes": [
+        {
+          "id": "llm_api",
+          "node_id": "llm_api",
+          "label": "LLM API 调用",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "能够稳定调用主流大模型 API，并完成基础参数配置与错误处理。",
+          "prerequisites": []
+        },
+        {
+          "id": "multi_turn",
+          "node_id": "multi_turn",
+          "label": "多轮对话",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "可以维护多轮上下文，让连续追问下的回答保持一致性。",
+          "prerequisites": [
+            "llm_api"
+          ]
+        },
+        {
+          "id": "function_calling",
+          "node_id": "function_calling",
+          "label": "Function Calling",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "能够按 schema 调用工具并处理参数校验与异常回退。",
+          "prerequisites": [
+            "multi_turn"
+          ]
+        },
+        {
+          "id": "langgraph",
+          "node_id": "langgraph",
+          "label": "LangGraph 编排",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "可以设计状态流并解释每个节点职责。",
+          "prerequisites": [
+            "function_calling"
+          ]
+        },
+        {
+          "id": "rag",
+          "node_id": "rag",
+          "label": "RAG 检索",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "能完成检索、重排和生成的基础链路并验证效果。",
+          "prerequisites": [
+            "function_calling"
+          ]
+        },
+        {
+          "id": "rag_agent_prototype",
+          "node_id": "rag_agent_prototype",
+          "label": "RAG Agent 原型",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "已打通学习记录 + 检索 + 问答的可运行原型，并能持续迭代。",
+          "prerequisites": [
+            "langgraph",
+            "rag"
+          ]
+        },
+        {
+          "id": "graphrag",
+          "node_id": "graphrag",
+          "label": "GraphRAG",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "可基于实体关系进行可解释检索。",
+          "prerequisites": [
+            "rag_agent_prototype"
+          ]
+        },
+        {
+          "id": "fastapi_deploy",
+          "node_id": "fastapi_deploy",
+          "label": "FastAPI 部署",
+          "type": "prerequisite",
+          "status": "notStarted",
+          "description": "可把 Agent 封装成稳定 API 服务并部署。",
+          "prerequisites": [
+            "rag_agent_prototype"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "from": "llm_api",
+          "to": "multi_turn"
+        },
+        {
+          "from": "multi_turn",
+          "to": "function_calling"
+        },
+        {
+          "from": "function_calling",
+          "to": "langgraph"
+        },
+        {
+          "from": "function_calling",
+          "to": "rag"
+        },
+        {
+          "from": "langgraph",
+          "to": "rag_agent_prototype"
+        },
+        {
+          "from": "rag",
+          "to": "rag_agent_prototype"
+        },
+        {
+          "from": "rag_agent_prototype",
+          "to": "graphrag"
+        },
+        {
+          "from": "rag_agent_prototype",
+          "to": "fastapi_deploy"
+        }
+      ],
+      "total_nodes": 8,
+      "mastered_nodes": 0,
+      "learning_nodes": 0,
+      "progress_percent": 0.0,
+      "created_at": 1775105219,
+      "updated_at": 1775105219
+    }
+  }
+}

@@ -9,298 +9,318 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: var(--color-bg);
-            color: var(--color-text);
-            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #FFFFFF;
+            color: #0F172A;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
             line-height: 1.6;
         }
+        a { color: inherit; text-decoration: none; }
         .container {
             width: min(1120px, 92vw);
             margin: 0 auto;
         }
         .nav {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            background: #fafafac7;
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--color-border);
+            border-bottom: 1px solid #E2E8F0;
+            background: #FFFFFF;
         }
         .nav-inner {
+            min-height: 64px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: var(--space-16) 0;
+            gap: 16px;
         }
         .brand {
+            font-size: 24px;
             font-weight: 800;
-            letter-spacing: 0.4px;
-            color: var(--color-brand-700);
-            font-size: var(--font-h4);
+            color: #3B82F6;
         }
-        .btn {
-            border: none;
-            border-radius: 12px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.25s ease-in-out;
-            text-decoration: none;
-            display: inline-block;
-            border: 1px solid transparent;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
-        }
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: none;
-        }
-        .btn-primary {
-            background: #EFF6FF;
-            border-color: #3B82F6;
-            color: #1D4ED8;
-        }
-        .btn-ghost {
-            background: #FEF9C3;
-            border-color: #FBBF24;
-            color: #92400E;
-        }
-        .btn-tier-1 { background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; }
-        .btn-tier-1:hover { background: #DBEAFE; }
-        .btn-tier-2 { background: #FEF9C3; border-color: #FBBF24; color: #92400E; }
-        .btn-tier-2:hover { background: #FDE68A; }
-        .btn-tier-3 { background: #DBEAFE; border-color: #93C5FD; color: #1E40AF; }
-        .btn-tier-3:hover { background: #BFDBFE; }
-        .btn-tier-4 { background: #FFF7ED; border-color: #FCD34D; color: #B45309; }
-        .btn-tier-4:hover { background: #FFEDD5; }
-        .hero {
-            padding: 72px 0 48px;
-            display: grid;
-            grid-template-columns: 1.15fr 1fr;
-            gap: var(--space-32);
+        .nav-links {
+            display: flex;
+            gap: 20px;
             align-items: center;
+            font-size: 15px;
         }
-        h1 {
-            font-size: clamp(44px, 8vw, var(--font-h1));
-            line-height: 1.08;
-            margin: 0 0 16px;
-            letter-spacing: -1px;
+        .nav-links a {
+            color: #334155;
+            font-weight: 600;
         }
-        .hero-sub {
-            margin: 0 0 24px;
-            color: var(--color-text-muted);
-            font-size: 18px;
+        .nav-links a:hover {
+            color: #3B82F6;
         }
-        .hero-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .mockup {
-            background: #fff;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-medium);
-            padding: 16px;
-            transform: rotate(-1.3deg);
-        }
-        .mockup-head {
-            display: flex;
-            gap: 8px;
-            padding-bottom: 10px;
-        }
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: var(--radius-full);
-            background: #d1d5db;
-        }
-        .mockup-body {
-            border-radius: var(--radius-md);
-            background: #f8fafc;
-            padding: 14px;
-            display: grid;
-            gap: 10px;
-        }
-        .mockup-item {
-            height: 46px;
-            border-radius: var(--radius-md);
-            background: #fff;
-            border: 1px solid var(--color-border);
+        .main {
+            padding-bottom: 64px;
         }
         .section {
             padding: 52px 0;
         }
         .section-title {
-            text-align: center;
-            margin: 0 0 28px;
-            font-size: var(--font-h2);
-            letter-spacing: -0.5px;
+            margin: 0 0 10px;
+            font-size: clamp(24px, 3vw, 34px);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
         }
         .section-sub {
-            text-align: center;
-            color: var(--color-text-muted);
-            margin: -12px auto 28px;
+            margin: 0;
+            color: #64748B;
+            font-size: 15px;
+        }
+        .hero {
+            padding: 78px 0 56px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            align-items: center;
+        }
+        .hero h1 {
+            margin: 0 0 14px;
+            color: #0F172A;
+            font-size: clamp(30px, 5vw, 52px);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        .hero p {
+            margin: 0 auto 28px;
+            color: #475569;
+            font-size: clamp(16px, 2.5vw, 20px);
             max-width: 640px;
+        }
+        .hero-left p {
+            margin: 0 0 24px;
+        }
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            border-radius: 999px;
+            padding: 0 24px;
+            background: #FBBF24;
+            color: #1F2937;
+            font-weight: 700;
+            border: 1px solid #F59E0B;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .hero-cta:hover {
+            background: #F59E0B;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.25);
+        }
+        .hero-art {
+            border: 1px solid #DBEAFE;
+            background: linear-gradient(180deg, #F8FBFF, #EFF6FF);
+            border-radius: 20px;
+            min-height: 290px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-art-line {
+            position: absolute;
+            left: 12%;
+            right: 12%;
+            top: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, #BFDBFE, #3B82F6, #BFDBFE);
+            transform: translateY(-50%);
+        }
+        .hero-art-dot {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3B82F6;
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.16);
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        .hero-art-dot.a { left: 18%; top: 38%; animation-delay: 0s; }
+        .hero-art-dot.b { left: 42%; top: 55%; animation-delay: .3s; }
+        .hero-art-dot.c { left: 64%; top: 34%; animation-delay: .6s; }
+        .hero-art-dot.d { left: 80%; top: 58%; animation-delay: .9s; }
+        .hero-art-label {
+            position: absolute;
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid #BFDBFE;
+            background: #FFFFFF;
+            color: #1E3A8A;
+            font-weight: 700;
+            animation: float 3s ease-in-out infinite;
+        }
+        .hero-art-label.l1 { left: 14%; top: 22%; }
+        .hero-art-label.l2 { left: 39%; top: 68%; animation-delay: .4s; }
+        .hero-art-label.l3 { left: 62%; top: 16%; animation-delay: .8s; }
+        .hero-art-label.l4 { left: 76%; top: 72%; animation-delay: 1.2s; }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .features {
+            padding: 8px 0 10px;
         }
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: var(--space-16);
+            gap: 14px;
         }
         .card {
-            background: var(--color-card);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-light);
-            padding: 22px;
-            transition: transform var(--motion-normal) var(--ease-standard), box-shadow var(--motion-normal) var(--ease-standard);
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-medium);
-        }
-        .icon-wrap {
-            width: 46px;
-            height: 46px;
-            border-radius: var(--radius-md);
-            background: #ede9fe;
-            color: var(--color-brand-700);
-            display: grid;
-            place-items: center;
-            margin-bottom: 10px;
+            border: 1px solid #DBEAFE;
+            border-radius: 16px;
+            padding: 16px;
+            background: #FFFFFF;
         }
         .card h3 {
             margin: 0 0 8px;
-            font-size: 20px;
+            color: #1E3A8A;
+            font-size: 18px;
         }
         .card p {
             margin: 0;
-            color: var(--color-text-muted);
+            color: #475569;
+            font-size: 15px;
+        }
+        .paths-grid {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .path-card {
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 14px;
+            background: #FFFFFF;
+        }
+        .path-card h4 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            color: #0F172A;
+        }
+        .path-card p {
+            margin: 0 0 10px;
+            font-size: 13px;
+            color: #64748B;
+        }
+        .learn-count {
+            display: inline-block;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #1D4ED8;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 700;
         }
         .steps {
+            margin-top: 20px;
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: var(--space-16);
+            gap: 12px;
         }
         .step {
-            position: relative;
-            padding-top: 8px;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 18px 16px;
+            background: #FFFFFF;
         }
         .step-no {
-            width: 34px;
-            height: 34px;
-            border-radius: var(--radius-full);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #3B82F6;
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 700;
             display: grid;
             place-items: center;
-            color: #fff;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--color-brand-500), #06b6d4);
             margin-bottom: 10px;
         }
-        .footer {
-            margin-top: 32px;
-            border-top: 1px solid var(--color-border);
-            padding: 36px 0 42px;
-            text-align: center;
-        }
-        .footer-title {
-            font-size: var(--font-h3);
+        .step h4 {
             margin: 0 0 8px;
+            font-size: 18px;
         }
-        .footer-sub {
-            margin: 0 0 16px;
-            color: var(--color-text-muted);
-        }
-        .copy {
-            margin-top: 20px;
-            color: var(--color-text-muted);
-            font-size: var(--font-caption);
-        }
-        .reveal {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity var(--motion-slow) var(--ease-standard), transform var(--motion-slow) var(--ease-standard);
-        }
-        .reveal.is-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .btn-cta {
-            background: #FEF9C3;
-            border-color: #FBBF24;
-            color: #92400E;
-        }
-        .btn-cta:hover {
-            background: #FDE68A;
-        }
-        .mockup-label {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 12px;
-            color: var(--color-text-muted);
+        .step p {
+            margin: 0;
+            color: #64748B;
             font-size: 14px;
-            font-weight: 500;
         }
-        [data-tooltip] {
-            position: relative;
+        .proof {
+            border: 1px solid #E2E8F0;
+            border-radius: 18px;
+            background: #F8FAFC;
+            padding: 22px;
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 14px;
+            align-items: center;
         }
-        [data-tooltip]::before,
-        [data-tooltip]::after {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 1200;
+        .quote {
+            margin: 0;
+            font-size: 18px;
+            color: #0F172A;
+            line-height: 1.7;
         }
-        [data-tooltip]::before {
-            content: attr(data-tooltip);
-            background: #1A1A2E;
-            color: #fff;
+        .stats {
+            display: grid;
+            gap: 10px;
+        }
+        .stat {
+            border: 1px solid #DBEAFE;
+            border-radius: 14px;
+            background: #FFFFFF;
+            padding: 12px;
+        }
+        .stat strong {
+            display: block;
+            font-size: 24px;
+            color: #1D4ED8;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+        .stat span {
             font-size: 13px;
-            border-radius: 8px;
-            padding: 6px 12px;
-            white-space: nowrap;
-            left: 50%;
-            transform: translate(-50%, 4px);
-            bottom: calc(100% + 10px);
+            color: #64748B;
         }
-        [data-tooltip]::after {
-            content: "";
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid #1A1A2E;
-            left: 50%;
-            transform: translate(-50%, 4px);
-            bottom: calc(100% + 4px);
+        .bottom-cta {
+            text-align: center;
+            padding: 62px 0 12px;
         }
-        [data-tooltip][data-tooltip-pos="bottom"]::before {
-            bottom: auto;
-            top: calc(100% + 10px);
-            transform: translate(-50%, -4px);
+        .bottom-cta h3 {
+            margin: 0 0 14px;
+            font-size: clamp(24px, 3vw, 34px);
         }
-        [data-tooltip][data-tooltip-pos="bottom"]::after {
-            bottom: auto;
-            top: calc(100% + 4px);
-            border-top: none;
-            border-bottom: 6px solid #1A1A2E;
-            transform: translate(-50%, -4px);
-        }
-        [data-tooltip].tooltip-visible::before,
-        [data-tooltip].tooltip-visible::after {
-            opacity: 1;
-            transform: translate(-50%, 0);
-        }
-        @media (max-width: 980px) {
-            .hero {
+        @media (max-width: 900px) {
+            .nav-inner {
+                min-height: auto;
+                padding: 14px 0;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .nav-links {
+                width: 100%;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .feature-grid {
                 grid-template-columns: 1fr;
             }
-            .feature-grid, .steps {
+            .paths-grid {
+                grid-template-columns: 1fr;
+            }
+            .steps {
+                grid-template-columns: 1fr;
+            }
+            .proof {
+                grid-template-columns: 1fr;
+            }
+            .hero {
+                padding: 64px 0 48px;
                 grid-template-columns: 1fr;
             }
         }
@@ -309,139 +329,122 @@
 <body>
     <header class="nav">
         <div class="container nav-inner">
-            <div class="brand">LearnFlow</div>
-            <a href="/map" class="btn btn-ghost" data-tooltip="查看技能进度">进入学习地图</a>
+            <a class="brand" href="/landing.html">LearnFlow</a>
+            <nav class="nav-links">
+                <a href="/bubble.html">路线图</a>
+                <a href="/tracker.html">学习记录</a>
+                <a href="/consult.html">规划路径</a>
+            </nav>
         </div>
     </header>
 
-    <section class="container hero">
-        <div class="reveal">
-            <h1 id="hero-main-title"></h1>
-            <p class="hero-sub">输入你的目标，AI 自动规划学习路径，<br>用苏格拉底式对话精准定位你的知识盲区</p>
-            <div class="hero-actions">
-                <a href="/tracker" class="btn btn-cta" data-tooltip="立即生成学习路线">开始规划我的学习路径</a>
-                <a href="/map" class="btn btn-ghost" data-tooltip="浏览学习路径">查看学习路线</a>
+    <main class="container main">
+        <section class="hero">
+            <div class="hero-left">
+                <h1>告诉我你在哪，我来告诉你该去哪</h1>
+                <p>2-4轮对话生成你的专属学习路径</p>
+                <a class="hero-cta" href="/bubble.html">开始规划我的学习路径</a>
             </div>
-        </div>
-        <div class="mockup reveal">
-            <div class="mockup-head">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
+            <div class="hero-art" aria-hidden="true">
+                <div class="hero-art-line"></div>
+                <span class="hero-art-dot a"></span>
+                <span class="hero-art-dot b"></span>
+                <span class="hero-art-dot c"></span>
+                <span class="hero-art-dot d"></span>
+                <span class="hero-art-label l1">基础节点</span>
+                <span class="hero-art-label l2">实践节点</span>
+                <span class="hero-art-label l3">进阶节点</span>
+                <span class="hero-art-label l4">目标岗位</span>
             </div>
-            <div class="mockup-body">
-                <div class="mockup-item mockup-label"><span>目标输入</span><span>✓</span></div>
-                <div class="mockup-item mockup-label" style="background:#eff6ff;border-color:#bfdbfe;"><span>路径生成</span><span>AI</span></div>
-                <div class="mockup-item mockup-label"><span>盲区定位</span><span>2-4轮</span></div>
-                <div class="mockup-item mockup-label"><span>个性建议</span><span>Done</span></div>
-            </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="section">
-        <div class="container">
-            <h2 class="section-title reveal">核心能力</h2>
-            <p class="section-sub reveal">从规划到执行，再到反馈评估，覆盖完整学习闭环。</p>
+        <section class="features section">
+            <h2 class="section-title">核心能力</h2>
             <div class="feature-grid">
-                <article class="card reveal">
-                    <div class="icon-wrap">🗺️</div>
-                    <h3>动态知识图谱</h3>
+                <article class="card">
+                    <h3>🗺️ 动态知识图谱</h3>
                     <p>不是固定课程，是根据你实时生成的专属路径</p>
                 </article>
-                <article class="card reveal">
-                    <div class="icon-wrap">🧭</div>
-                    <h3>精准状态定位</h3>
+                <article class="card">
+                    <h3>🧭 精准状态定位</h3>
                     <p>2-4轮深度对话，比你自己更了解你掌握了什么</p>
                 </article>
-                <article class="card reveal">
-                    <div class="icon-wrap">📚</div>
-                    <h3>知识库驱动</h3>
+                <article class="card">
+                    <h3>📚 知识库驱动</h3>
                     <p>上传你的资料，AI 从你已有的知识出发规划路径</p>
                 </article>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="section">
-        <div class="container">
-            <h2 class="section-title reveal">How it works</h2>
-            <p class="section-sub reveal">三个步骤，快速搭建个人学习系统。</p>
-            <div class="steps">
-                <article class="card step reveal">
-                    <div class="step-no">1</div>
-                    <h3>选择目标</h3>
-                    <p>选定你的学习方向并进入对应技能地图。</p>
+        <section class="section">
+            <h2 class="section-title">热门路径</h2>
+            <p class="section-sub">看看大家正在学习什么方向，快速加入高价值路径。</p>
+            <div class="paths-grid">
+                <article class="path-card">
+                    <h4>🤖 Agent 应用开发</h4>
+                    <p>从 API 调用到多工具编排，完整构建可上线 Agent。</p>
+                    <span class="learn-count">2,340 人正在学</span>
                 </article>
-                <article class="card step reveal">
-                    <div class="step-no">2</div>
-                    <h3>持续记录</h3>
-                    <p>写下学习笔记、上传资料、沉淀实践过程。</p>
+                <article class="path-card">
+                    <h4>📊 数据分析实战</h4>
+                    <p>聚焦 Python 数据处理、可视化和业务洞察输出。</p>
+                    <span class="learn-count">1,920 人正在学</span>
                 </article>
-                <article class="card step reveal">
-                    <div class="step-no">3</div>
-                    <h3>获得反馈</h3>
-                    <p>获取建议和评估，系统自动给出下一阶段行动。</p>
+                <article class="path-card">
+                    <h4>🧪 机器学习基础</h4>
+                    <p>从建模思维到评估方法，补齐算法核心认知。</p>
+                    <span class="learn-count">3,180 人正在学</span>
+                </article>
+                <article class="path-card">
+                    <h4>🚀 求职作品集路径</h4>
+                    <p>围绕目标岗位搭建项目组合与成果表达框架。</p>
+                    <span class="learn-count">1,460 人正在学</span>
                 </article>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <footer class="footer">
-        <div class="container reveal">
-            <h3 class="footer-title">今天开始，积累属于你的成长路径</h3>
-            <p class="footer-sub">适合普通学习者使用，不需要复杂配置，打开即可开始。</p>
-            <a href="/tracker" class="btn btn-primary" data-tooltip="马上体验产品">免费注册并开始</a>
-            <div class="copy">© 2026 LearnFlow. All rights reserved.</div>
-        </div>
-    </footer>
+        <section class="section">
+            <h2 class="section-title">How it Works</h2>
+            <p class="section-sub">三步完成个性化学习闭环：对话、诊断、生成路径。</p>
+            <div class="steps">
+                <article class="step">
+                    <div class="step-no">1</div>
+                    <h4>对话输入目标</h4>
+                    <p>告诉系统你的基础、目标岗位和当前困惑。</p>
+                </article>
+                <article class="step">
+                    <div class="step-no">2</div>
+                    <h4>能力状态诊断</h4>
+                    <p>通过 2-4 轮深度交流识别你的已掌握与薄弱点。</p>
+                </article>
+                <article class="step">
+                    <div class="step-no">3</div>
+                    <h4>生成专属路径</h4>
+                    <p>输出可执行节点地图，持续更新下一步行动建议。</p>
+                </article>
+            </div>
+        </section>
 
-    <script>
-        const heroTitleCandidates = [
-            "No need a map; indeed a drawing",
-            "Give me the position; give you the possibility"
-        ];
-        const heroTitleEl = document.getElementById('hero-main-title');
-        if (heroTitleEl) {
-            heroTitleEl.textContent = heroTitleCandidates[Math.floor(Math.random() * heroTitleCandidates.length)];
-        }
+        <section class="section">
+            <div class="proof">
+                <blockquote class="quote">“以前自学总是迷路，LearnFlow 帮我梳理了清晰的边界。现在我知道先学什么、为什么学、学到什么程度。”</blockquote>
+                <div class="stats">
+                    <div class="stat">
+                        <strong>12,500+</strong>
+                        <span>条路径已被规划</span>
+                    </div>
+                    <div class="stat">
+                        <strong>30%</strong>
+                        <span>平均节省资料筛选时间</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.15 });
-
-        const textTargets = Array.from(document.querySelectorAll('h1,h2,h3,p,.brand,.copy,.hero-actions .btn,.card,.step,.mockup-item'));
-        textTargets.forEach((el, idx) => {
-            el.classList.add('reveal');
-            el.style.transitionDelay = `${(idx % 10) * 0.1}s`;
-            observer.observe(el);
-        });
-        const tiers = ['btn-tier-1', 'btn-tier-2', 'btn-tier-3', 'btn-tier-4'];
-        document.querySelectorAll('.btn').forEach((btn, idx) => {
-            if (!btn.classList.contains('btn-cta')) {
-                btn.classList.add(tiers[idx % tiers.length]);
-            }
-            let timer = null;
-            const show = () => {
-                const rect = btn.getBoundingClientRect();
-                const nearTop = rect.top < 64;
-                const nearRight = rect.right > window.innerWidth - 20;
-                const nearLeft = rect.left < 20;
-                btn.setAttribute('data-tooltip-pos', nearTop || nearRight || nearLeft ? 'bottom' : 'top');
-                timer = setTimeout(() => btn.classList.add('tooltip-visible'), 300);
-            };
-            const hide = () => {
-                clearTimeout(timer);
-                btn.classList.remove('tooltip-visible');
-            };
-            btn.addEventListener('mouseenter', show);
-            btn.addEventListener('mouseleave', hide);
-            btn.addEventListener('blur', hide);
-        });
-    </script>
+        <section class="bottom-cta">
+            <h3>准备好开始了吗？</h3>
+            <a class="hero-cta" href="/bubble.html">开始规划我的学习路径</a>
+        </section>
+    </main>
 </body>
 </html>
